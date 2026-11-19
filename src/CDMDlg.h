@@ -64,6 +64,7 @@ protected:
 public:
 	afx_msg void OnToolTocfromsession();
 	afx_msg void OnToolCreateimage();
+	afx_msg void OnMixedDisc();
 	afx_msg void OnViewLog();
 	afx_msg void OnToolReadtrack();
 	afx_msg void OnCbnSelchangeSessionlist();

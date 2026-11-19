@@ -5,6 +5,7 @@
 #include "Setting.h"
 
 #include "CheckSector.h"
+#include "MixedDisc.h"
 #define PGB(a) ((BYTE *)(((DWORD)(a) + 0x0f) & ~0x0f))
 static LPCSTR AudioMethod[11][2]={
 	{"READ D8","A"},
@@ -28,6 +29,7 @@ DWORD CReadThread::ReadDiscSS(void)
 	CString cs;
 
 	Dlg->m_Progress.SetRange(0,100);
+	m_BatchedSectors=0;
 
 	cs.Format("%s : Single-Session",MSG(136));
 	m_LogWnd->AddMessage(LOG_NORMAL,cs);
@@ -95,12 +97,18 @@ DWORD CReadThread::ReadDiscSS(void)
 			cs += tmp;
 			m_LogWnd->AddMessage(LOG_INFO,cs);
 			Dlg->m_Message = cs;
+			Dlg->SetTrackProgress(track+1,Toc->m_LastTrack);
 			PostMessage(Dlg->m_hWnd,WM_COMMAND,ID_UPDATE_DIALOG,0);
 			msf = Toc->m_Track[track].m_MSF;
 			if(track == 0){
 				msf = 150;
 			}
-			if(!ReadCD(msf,Toc->m_Track[track+1].m_MSF,Toc->m_Track[track].m_TrackType)){
+			const bool changesType=track+1<Toc->m_LastTrack &&
+				(Toc->m_Track[track].m_TrackType==TRACKTYPE_AUDIO)!=
+				(Toc->m_Track[track+1].m_TrackType==TRACKTYPE_AUDIO);
+			const int boundaryGuard=changesType ? mixed::maxVerifiedGap : 0;
+			if(!ReadCD(msf,Toc->m_Track[track+1].m_MSF,Toc->m_Track[track].m_TrackType,
+			           true,boundaryGuard)){
 				m_ImageFile.Close();
 				return 0;
 			}
@@ -114,8 +122,13 @@ DWORD CReadThread::ReadDiscSS(void)
 		m_ImageFile.Close();
 	}
 
+	if(m_BatchedSectors){
+		cs.Format("Single-session program reads: %lu sectors read in batches",m_BatchedSectors);
+		m_LogWnd->AddMessage(LOG_INFO,cs);
+	}
 	if(!theSetting.m_TestReadMode){
 		CreateCueSheet();
+		VerifyRedump();
 	}
 	if(m_StopFlag) return 0;
 

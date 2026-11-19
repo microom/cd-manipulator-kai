@@ -1,6 +1,7 @@
 // Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
+#include "CDMVersion.h"
 
 #define APSTUDIO_READONLY_SYMBOLS
 /////////////////////////////////////////////////////////////////////////////
@@ -79,7 +80,7 @@ CAPTION "CD Manipulatorのバージョン情報"
 FONT 9, "MS UI Gothic", 400, 0, 0x80
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,67,42,20,20
-    CTEXT           "CD Manipulator",ID_VERSTRING,12,24,128,8,SS_NOPREFIX
+    CTEXT           CDM_PRODUCT_NAME,ID_VERSTRING,12,24,128,8,SS_NOPREFIX
     LTEXT           "Copyright (C) 2002 Y.Kanechika（ごーるど）",IDC_AUTHOR,
                     6,72,144,8
     DEFPUSHBUTTON   "OK",IDOK,51,84,50,16,WS_GROUP
@@ -91,7 +92,7 @@ IDD_MAIN_DIALOG DIALOGEX 0, 0, 251, 108
 STYLE DS_SETFONT | DS_MODALFRAME | WS_MINIMIZEBOX | WS_POPUP | WS_VISIBLE | 
     WS_CAPTION | WS_SYSMENU
 EXSTYLE WS_EX_APPWINDOW
-CAPTION "CD Manipulator"
+CAPTION CDM_PRODUCT_NAME
 MENU IDR_MAINMENU
 FONT 10, "MS UI Gothic", 400, 0, 0x80
 BEGIN
@@ -116,22 +117,24 @@ BEGIN
                     WS_EX_STATICEDGE
 END
 
-IDD_READSETTING DIALOGEX 0, 0, 283, 203
+IDD_READSETTING DIALOGEX 0, 0, 316, 223
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "ＣＤイメージ作成"
 FONT 9, "MS UI Gothic", 400, 0, 0x80
 BEGIN
-    DEFPUSHBUTTON   "OK",IDOK,174,180,48,18
-    PUSHBUTTON      "キャンセル",IDCANCEL,228,180,48,18
-    EDITTEXT        IDC_IMAGENAME,12,36,228,12,ES_AUTOHSCROLL | ES_READONLY
-    LTEXT           "イメージファイル（.cue）",IDC_STATIC2,6,24,234,8
-    PUSHBUTTON      "検索",IDC_BROWSFILE,246,30,30,18
-    LTEXT           "選択中のドライブ",IDC_STATIC1,6,6,54,12,SS_CENTERIMAGE
-    COMBOBOX        IDC_DRIVELIST,66,6,210,60,CBS_DROPDOWNLIST | CBS_SORT | 
+    DEFPUSHBUTTON   "OK",IDOK,207,200,48,18
+    PUSHBUTTON      "キャンセル",IDCANCEL,261,200,48,18
+    EDITTEXT        IDC_IMAGENAME,12,36,261,12,ES_AUTOHSCROLL | ES_READONLY
+    LTEXT           "イメージファイル（.cue）",IDC_STATIC2,6,24,267,8
+    PUSHBUTTON      "検索",IDC_BROWSFILE,279,30,30,18
+    LTEXT           "選択中のドライブ",IDC_STATIC1,6,6,69,12,SS_CENTERIMAGE
+    COMBOBOX        IDC_DRIVELIST,81,6,228,60,CBS_DROPDOWNLIST | CBS_SORT |
                     WS_VSCROLL | WS_TABSTOP
-    COMBOBOX        IDC_ENGINELIST,6,54,270,60,CBS_DROPDOWNLIST | CBS_SORT | 
+    COMBOBOX        IDC_ENGINELIST,6,54,303,90,CBS_DROPDOWNLIST |
                     WS_VSCROLL | WS_TABSTOP
-    LTEXT           "Under construction",IDC_STATIC,108,108,60,12
+    LTEXT           "Under construction",IDC_ENGINE_NOTE,12,83,290,16
+    CONTROL         "同じディスクの既存CUEを参照する",IDC_MIXED_REFERENCE,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,12,107,240,14
 END
 
 IDD_READPROGRESS DIALOGEX 0, 0, 243, 71
@@ -182,7 +185,7 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,138,144,126,8
     CONTROL         "CDDAの左右チャンネル入れ替え",IDC_SWAPCHANNEL,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,138,132,126,8
-    COMBOBOX        IDC_AUDIOMETHOD,150,156,114,48,CBS_DROPDOWNLIST | 
+    COMBOBOX        IDC_AUDIOMETHOD,138,156,126,180,CBS_DROPDOWNLIST |
                     WS_VSCROLL | WS_TABSTOP
     COMBOBOX        IDC_AUDIOSPEED,42,138,66,66,CBS_DROPDOWNLIST | 
                     WS_VSCROLL | WS_TABSTOP
@@ -531,37 +534,41 @@ BEGIN
                     WS_TABSTOP
 END
 
-IDD_READSETTING_1 DIALOGEX 6, 70, 273, 104
+IDD_READSETTING_1 DIALOGEX 6, 70, 306, 122
 STYLE DS_SETFONT | DS_CONTROL | WS_CHILD | WS_SYSMENU
 FONT 9, "MS UI Gothic", 400, 0, 0x80
 BEGIN
-    GROUPBOX        "Single-Session Mode",IDC_STATIC1,0,0,270,102
+    GROUPBOX        "Single-Session Mode",IDC_STATIC1,0,0,303,119
     CONTROL         "読み込みエラーの無視",IDC_IGNORE_READERROR,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,132,24,132,8
+                    BS_AUTOCHECKBOX | WS_TABSTOP,150,24,147,8
     CONTROL         "CDDA読み込みコマンドの自動検知",IDC_AUTODETECT_COMMAND,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,132,72,132,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,150,72,147,8
     CONTROL         "CDDAの左右チャンネル入れ替え",IDC_SWAPCHANNEL,"Button",
-                    BS_AUTOCHECKBOX | WS_TABSTOP,132,60,132,8
-    COMBOBOX        IDC_AUDIOMETHOD,144,84,114,48,CBS_DROPDOWNLIST | 
+                    BS_AUTOCHECKBOX | WS_TABSTOP,150,60,147,8
+    COMBOBOX        IDC_AUDIOMETHOD,150,84,147,180,CBS_DROPDOWNLIST |
                     WS_VSCROLL | WS_TABSTOP
     CONTROL         "EDCのチェックを行わない(Fast error skip)",
                     IDC_FAST_ERRORSKIP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    132,36,132,8
+                    150,36,147,8
     CONTROL         "サブチャンネル解析（正確なＴＯＣ取得）",
                     IDC_ANALYZE_SUBQ,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,
-                    132,12,132,8
+                    150,12,147,8
     CONTROL         "バーストエラーの読み込みＡＩ",IDC_BURST_ERROR_SCAN,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,132,48,132,8
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,150,48,147,8
     CONTROL         "テストモード（ファイルを作成しない）",IDC_WRITENULL,
-                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,12,120,8
-    COMBOBOX        IDC_AUDIOSPEED,18,84,66,66,CBS_DROPDOWNLIST | WS_VSCROLL | 
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,12,138,8
+    COMBOBOX        IDC_AUDIOSPEED,18,100,66,66,CBS_DROPDOWNLIST | WS_VSCROLL |
                     WS_TABSTOP
-    LTEXT           "音楽トラックの読み込み速度",IDC_STATIC3,6,72,120,8
-    LTEXT           "データトラックの読み込み速度",IDC_STATIC4,6,42,120,8
-    COMBOBOX        IDC_DATASPEED2,18,54,66,66,CBS_DROPDOWNLIST | WS_VSCROLL | 
+    LTEXT           "音楽トラックの読み込み速度",IDC_STATIC3,6,88,138,8
+    LTEXT           "データトラックの読み込み速度",IDC_STATIC4,6,61,138,8
+    COMBOBOX        IDC_DATASPEED2,18,73,66,66,CBS_DROPDOWNLIST | WS_VSCROLL |
                     WS_TABSTOP
     CONTROL         "高度な設定",IDC_EXTMENU,"Button",BS_AUTOCHECKBOX | 
-                    WS_TABSTOP,6,24,120,8
+                    WS_TABSTOP,6,24,138,8
+    CONTROL         "不一致の音声を自動補正",IDC_REDUMP_RETRY,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,36,138,8
+    CONTROL         "CHDも生成する",IDC_CREATE_CHD,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,6,48,138,8
 END
 
 IDD_READSETTING_2 DIALOGEX 6, 70, 273, 104
@@ -654,9 +661,9 @@ BEGIN
     IDD_READSETTING, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 276
+        RIGHTMARGIN, 309
         TOPMARGIN, 7
-        BOTTOMMARGIN, 196
+        BOTTOMMARGIN, 216
     END
 
     IDD_READPROGRESS, DIALOG
@@ -822,9 +829,9 @@ BEGIN
     IDD_READSETTING_1, DIALOG
     BEGIN
         LEFTMARGIN, 7
-        RIGHTMARGIN, 266
+        RIGHTMARGIN, 299
         TOPMARGIN, 7
-        BOTTOMMARGIN, 97
+        BOTTOMMARGIN, 115
     END
 
     IDD_READSETTING_2, DIALOG
@@ -898,6 +905,7 @@ BEGIN
         MENUITEM SEPARATOR
         MENUITEM "CDの複製(&D)",                ID_CD_DUPLICATE
         MENUITEM "CDからイメージ作成(&R)",      ID_TOOL_CREATEIMAGE
+        MENUITEM "PCE-CD 読み取り（試験版）",       ID_MIXED_DISC
         MENUITEM "イメージを書き込み(&W)",      ID_CD_WRITE_IMAGE
         MENUITEM "マスタリングして書き込み(&M)", ID_TOOL_MASTERING
         MENUITEM SEPARATOR
@@ -1024,9 +1032,37 @@ BEGIN
     IDR_LOGFRAME            "LOG - CD Manipulator"
 END
 
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION CDM_FILE_VERSION
+ PRODUCTVERSION CDM_FILE_VERSION
+ FILEFLAGSMASK 0x3fL
+ FILEFLAGS 0x0L
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription", CDM_PRODUCT_NAME
+            VALUE "FileVersion", APP_VERSION
+            VALUE "InternalName", "CdManipulator"
+            VALUE "LegalCopyright", "Copyright (C) 2002-2004 Y.Kanechika"
+            VALUE "OriginalFilename", "CdManipulator.exe"
+            VALUE "ProductName", CDM_PRODUCT_NAME
+            VALUE "ProductVersion", APP_VERSION
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
+
 STRINGTABLE 
 BEGIN
-    AFX_IDS_APP_TITLE       "CD Manipulator"
+    AFX_IDS_APP_TITLE       CDM_PRODUCT_NAME
 END
 
 #endif    // 日本語 resources

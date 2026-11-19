@@ -9,7 +9,7 @@
 
 #include "resource.h"		// メイン シンボル
 
-#define APP_VERSION		"2.70 Final!"
+#include "CDMVersion.h"
 // CHermit2App:
 // このクラスの実装については、Hermit2.cpp を参照してください。
 //

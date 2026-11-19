@@ -1,0 +1,9 @@
+/build/
+/dist/
+/logs/
+/.deps/
+/.vs/
+*.user
+*.suo
+*.aps
+/build-env.cmd

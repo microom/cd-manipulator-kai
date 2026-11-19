@@ -38,6 +38,8 @@ void CReadSettingDialog1::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_FAST_ERRORSKIP, m_FastErrorskip);
 	DDX_Check(pDX, IDC_BURST_ERROR_SCAN, m_BurstErrorScan);
 	DDX_Check(pDX, IDC_SWAPCHANNEL, m_SwapChannel);
+	DDX_Check(pDX, IDC_REDUMP_RETRY, m_RedumpRetry);
+	DDX_Check(pDX, IDC_CREATE_CHD, m_CreateChd);
 	DDX_Check(pDX, IDC_AUTODETECT_COMMAND, m_AutoDetectReadMethod);
 	DDX_Control(pDX, IDC_DATASPEED2, m_DataSpeed);
 	DDX_Control(pDX, IDC_AUDIOSPEED, m_AudioSpeed);
@@ -47,6 +49,7 @@ void CReadSettingDialog1::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(CReadSettingDialog1, CDialog)
 	ON_BN_CLICKED(IDC_EXTMENU, OnBnClickedExtmenu)
+	ON_BN_CLICKED(IDC_WRITENULL, OnBnClickedExtmenu)
 	ON_BN_CLICKED(IDC_AUTODETECT_COMMAND, OnBnClickedAutodetectCommand)
 END_MESSAGE_MAP()
 
@@ -67,6 +70,8 @@ void CReadSettingDialog1::Load(void)
 	m_AnalyzeSubQ = theSetting.m_AnalyzeSubQ;
 	m_BurstErrorScan = theSetting.m_BurstErrorScan;
 	m_ExtMenu = theSetting.m_ExtSetting_Read;
+	m_RedumpRetry = theSetting.m_RedumpRetry;
+	m_CreateChd = theSetting.m_CreateChd;
 
 	if(theSetting.m_Speed_Audio <= 1){
 		m_AudioSpeed.SetCurSel(4);
@@ -120,6 +125,10 @@ void CReadSettingDialog1::Save(void)
 	theSetting.m_SwapChannel = (m_SwapChannel == TRUE) ? true:false;
 	theSetting.m_AutoDetectMethod = (m_AutoDetectReadMethod == TRUE) ? true:false;
 	theSetting.m_ExtSetting_Read = m_ExtMenu;
+	if(GetDlgItem(IDC_REDUMP_RETRY)->IsWindowEnabled())
+		theSetting.m_RedumpRetry = m_RedumpRetry!=FALSE;
+	if(!m_SettingAtCopy && !theSetting.AvailableChdman().IsEmpty())
+		theSetting.m_CreateChd = m_CreateChd!=FALSE;
 
 	UpdateData(FALSE);
 }
@@ -157,6 +166,10 @@ BOOL CReadSettingDialog1::OnInitDialog()
 	m_AudioMethod.AddString("READ D5");
 	UpdateData(FALSE);
 	SetLanguage();
+	if(theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")!=0){
+		SetDlgItemText(IDC_REDUMP_RETRY,"Retry mismatched audio against DB");
+		SetDlgItemText(IDC_CREATE_CHD,"Also create CHD");
+	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 例外 : OCX プロパティ ページは必ず FALSE を返します。
@@ -166,6 +179,13 @@ void CReadSettingDialog1::OnBnClickedExtmenu()
 {
 	// TODO : ここにコントロール通知ハンドラ コードを追加します。
 	UpdateData(TRUE);
+	auto* verify=GetDlgItem(IDC_REDUMP_RETRY);
+	verify->ShowWindow(m_ExtMenu && !m_SettingAtCopy ? SW_SHOW : SW_HIDE);
+	verify->EnableWindow(!m_SettingAtCopy && theSetting.m_UseSPTI &&
+	                     !theSetting.AvailableRedumpDb().IsEmpty());
+	auto* chd=GetDlgItem(IDC_CREATE_CHD);
+	chd->ShowWindow(m_ExtMenu && !m_SettingAtCopy ? SW_SHOW : SW_HIDE);
+	chd->EnableWindow(!m_SettingAtCopy && !m_TestRead && !theSetting.AvailableChdman().IsEmpty());
 	if(m_ExtMenu){
 		GetDlgItem(IDC_SWAPCHANNEL       )->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_AUTODETECT_COMMAND)->ShowWindow(SW_SHOW);

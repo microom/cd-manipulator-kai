@@ -50,6 +50,7 @@
 #define ID_EDIT_ADDDATA                 165
 #define ID_166                          166
 #define IDD_CALCMSF                     167
+#define ID_MIXED_DISC                   32774
 #define ID_TOOL_MSF                     168
 #define ID_CD_WRITE_IMAGE               169
 #define IDD_WRITEPROGRESS               170
@@ -248,6 +249,10 @@
 #define IDC_PROTECTION_FEATURES         1149
 #define IDC_EXTMENU                     1150
 #define IDC_ENGINELIST                  1154
+#define IDC_ENGINE_NOTE                 1156
+#define IDC_MIXED_REFERENCE             1157
+#define IDC_REDUMP_RETRY                 1158
+#define IDC_CREATE_CHD                   1159
 
 // Next default values for new objects
 // 
@@ -255,7 +260,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        216
 #define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1156
+#define _APS_NEXT_CONTROL_VALUE         1160
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -4,6 +4,7 @@
 #include "LogWindow.h"
 #include "imagefile.h"
 #include "PregapAnalyzer.h"
+#include <string>
 
 class CReadThread
 {
@@ -11,6 +12,12 @@ public:
 	CReadThread(void);
 	~CReadThread(void);
 	bool m_StopFlag;
+	bool m_MixedDisc = false;
+	bool m_VerifyAfterRead = false;
+	bool m_CreateChdAfterRead = false;
+	CString m_LayoutFile;
+	static bool CanAutoReadMixed(TableOfContents& toc);
+	DWORD ReadMixedDisc();
 protected:
 	HANDLE m_hThread;
 	DWORD m_ThreadID;
@@ -37,6 +44,8 @@ protected:
 	void CreateCueSheet(void);
 	CString m_ImgPath;
 	CString m_CuePath;
+	CString m_ChdCue;
+	std::string m_ChdCueText;
 	CString m_SubPath;
 	CString m_CCDPath;
 	CString m_PREPath;
@@ -47,7 +56,11 @@ protected:
 	LPCSTR m_CueFileName;
 	void CreateFileName(void);
 	CImageFile m_ImageFile;
-	bool ReadCD(MSFAddress Start, MSFAddress End,int TrackType);
+	bool ReadCD(MSFAddress Start, MSFAddress End,int TrackType,bool allowBatch=false,int boundaryGuard=0);
+	DWORD m_BatchedSectors=0;
+	void VerifyRedump();
+	void CreateChd();
+	bool ReadVerificationAudio(int lba,int count,BYTE* buffer,bool alternate=false);
 	bool ReadSession(MSFAddress Start, MSFAddress End,int SessionNo,BYTE &LeadInMode,BYTE ISRC[100][12],int ReadingMethod);
 	DWORD ReadDiscSS(void);
 	DWORD ReadDiscMS(void);

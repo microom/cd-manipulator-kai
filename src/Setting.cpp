@@ -7,6 +7,7 @@ CSetting::CSetting(void)
 : m_SettingFile(_T(""))
 {
 	m_TestReadMode = false;
+	m_RedumpRetry = true;
 	m_IgnoreError = false;
 	m_SwapChannel = false;
 	m_AutoDetectMethod = true;
@@ -93,6 +94,27 @@ void CSetting::ReadString(LPCSTR lpAppName, LPCSTR lpKeyName, LPCSTR DefaultValu
 	return;
 }
 
+CString CSetting::AvailableRedumpDb() const
+{
+	CString path=m_RedumpDb.IsEmpty() ? m_Dir+"db\\redump_neogeocd.sqlite3" : m_RedumpDb;
+	if(path.Find(':')<0 && path.Left(2)!="\\\\") path=m_Dir+path;
+	const DWORD attributes=GetFileAttributes(path);
+	return attributes!=INVALID_FILE_ATTRIBUTES && !(attributes&FILE_ATTRIBUTE_DIRECTORY)
+		? path : CString();
+}
+
+CStringW CSetting::AvailableChdman() const
+{
+	wchar_t module[MAX_PATH];
+	const DWORD length=GetModuleFileNameW(nullptr,module,MAX_PATH);
+	if (!length || length>=MAX_PATH) return {};
+	CStringW path(module);
+	path=path.Left(path.ReverseFind(L'\\')+1)+L"chdman.exe";
+	const DWORD attributes=GetFileAttributesW(path);
+	return attributes!=INVALID_FILE_ATTRIBUTES && !(attributes&FILE_ATTRIBUTE_DIRECTORY)
+		? path : CStringW();
+}
+
 void CSetting::Load(void)
 {
 	//   general
@@ -135,6 +157,9 @@ void CSetting::Load(void)
 
 	//   read setting
 	m_TestReadMode = IntToBool(ReadInt("ReadSetting","TestReadMode",0));
+	m_RedumpRetry = IntToBool(ReadInt("ReadSetting","RedumpRetry",1));
+	m_CreateChd = IntToBool(ReadInt("ReadSetting","CreateChd",0));
+	ReadString("ReadSetting","RedumpDb","",m_RedumpDb);
 	m_IgnoreError = IntToBool(ReadInt("ReadSetting","IgnoreError",0));
 	m_FastErrorSkip = IntToBool(ReadInt("ReadSetting","FastErrorSkip",0));
 	m_SwapChannel = IntToBool(ReadInt("ReadSetting","SwapAudioChannel",0));
@@ -254,6 +279,9 @@ void CSetting::Save(void)
 
 	//   read setting
 	WriteInt("ReadSetting","TestReadMode",BoolToInt(m_TestReadMode));
+	WriteInt("ReadSetting","RedumpRetry",BoolToInt(m_RedumpRetry));
+	WriteInt("ReadSetting","CreateChd",BoolToInt(m_CreateChd));
+	WriteString("ReadSetting","RedumpDb",m_RedumpDb);
 	WriteInt("ReadSetting","IgnoreError",BoolToInt(m_IgnoreError));
 	WriteInt("ReadSetting","FastErrorSkip",BoolToInt(m_FastErrorSkip));
 	WriteInt("ReadSetting","SwapAudioChannel",BoolToInt(m_SwapChannel));

@@ -5,6 +5,53 @@
 #include "Setting.h"
 
 #include "CheckSector.h"
+#include "SptiDriver.h"
+#include "MixedDisc.h"
+#include <algorithm>
+
+namespace {
+constexpr int batchSectors=24;
+struct BatchCommand {
+	BYTE sectorType;
+	BYTE fields;
+	bool useMsf;
+};
+
+// The same READ CD variants as the selected single-sector command.
+constexpr BatchCommand audioCommands[] = {
+	{0,0,false}, {1,0x10,false}, {1,0x10,true},
+	{0,0x10,false}, {0,0x10,true}, {0,0xf8,false}, {0,0xf8,true}
+};
+
+bool ReadProgramBatch(CSptiDriver& drive,DWORD frame,int count,const BatchCommand& format,
+                      BYTE* buffer,SRB_ExecSCSICmd& cmd)
+{
+	cmd={};
+	cmd.SRB_BufLen=DWORD(count*2352);
+	cmd.SRB_BufPointer=buffer;
+	cmd.SRB_CDBLen=12;
+	cmd.SRB_Flags=SRB_DIR_IN;
+	cmd.CDBByte[0]=format.useMsf ? 0xb9 : 0xbe;
+	cmd.CDBByte[1]=BYTE(format.sectorType<<2);
+	cmd.CDBByte[9]=format.fields;
+	if(format.useMsf){
+		MSFAddress at,stop;
+		at=frame;
+		stop=frame+count;
+		cmd.CDBByte[3]=at.Minute;
+		cmd.CDBByte[4]=at.Second;
+		cmd.CDBByte[5]=at.Frame;
+		cmd.CDBByte[6]=stop.Minute;
+		cmd.CDBByte[7]=stop.Second;
+		cmd.CDBByte[8]=stop.Frame;
+	} else {
+		const DWORD lba=frame-150;
+		for(int i=0;i<4;++i) cmd.CDBByte[5-i]=BYTE(lba>>(8*i));
+		cmd.CDBByte[8]=BYTE(count);
+	}
+	return drive.ExactRead(cmd,15);
+}
+}
 #define PGB(a) ((BYTE *)(((DWORD)(a) + 0x0f) & ~0x0f))
 static LPCSTR AudioMethod[11][2]={
 	{"READ D8","A"},
@@ -34,12 +81,16 @@ static DWORD WINAPI ReadThread(LPVOID Thread)
 
 DWORD CReadThread::ThreadFunction(void)
 {
-	DWORD RetValue;
+	DWORD RetValue=0;
+	m_ChdCue.Empty();
+	m_ChdCueText.clear();
 	CReadProgressDialog *Dlg = (CReadProgressDialog*)m_ParentWnd;
 
 	m_ErrorCount = 0;
 
-	if(m_ReadImage){
+	if(m_MixedDisc){
+		RetValue = ReadMixedDisc();
+	} else if(m_ReadImage){
 		if(theSetting.m_ReadEngine == 0){
 			RetValue = ReadDiscSS();
 		} else if(theSetting.m_ReadEngine == 1){
@@ -55,10 +106,13 @@ DWORD CReadThread::ThreadFunction(void)
 		RetValue = ReadTrack();
 	}
 	m_CD->SetErrorCorrectMode(true);		//   check & correct MODE1 ECC/EDC
+	if(RetValue && !m_StopFlag && m_CreateChdAfterRead) CreateChd();
 	m_Success = false;
 	if(!m_StopFlag){
-		Dlg->m_Percent = "100%";
-		Dlg->m_Progress.SetPos(100);
+		if(!m_MixedDisc || RetValue){
+			Dlg->m_Percent = "100%";
+			Dlg->m_Progress.SetPos(100);
+		}
 		if(RetValue){
 			if(theSetting.m_IgnoreError && m_ErrorCount > 0){
 				CString cs;
@@ -71,8 +125,8 @@ DWORD CReadThread::ThreadFunction(void)
 			PostMessage(Dlg->m_hWnd,WM_COMMAND,ID_UPDATE_DIALOG,0);
 		}
 	}
-	Dlg->PostMessage(WM_COMMAND,ID_WINDOW_CLOSE,0);
 	m_LogWnd->AutoSave();
+	Dlg->PostMessage(WM_COMMAND,ID_WINDOW_CLOSE,0);
 
 	return RetValue;
 }
@@ -120,6 +174,7 @@ DWORD CReadThread::ReadTrack(void)
 				cs += tmp;
 				m_LogWnd->AddMessage(LOG_INFO,cs);
 				Dlg->m_Message = cs;
+				Dlg->SetTrackProgress(track+1,Toc->m_LastTrack);
 				PostMessage(Dlg->m_hWnd,WM_COMMAND,ID_UPDATE_DIALOG,0);
 				cs.Format(MSG(105),FileName);
 				m_LogWnd->AddMessage(LOG_INFO,cs);
@@ -236,7 +291,14 @@ void CReadThread::CreateCueSheet(void)
 		fprintf(fp,"    INDEX 01 %02d:%02d:%02d\n",Tmp.Minute,Tmp.Second,Tmp.Frame);
 		PrevAddr = Toc->m_Track[track].m_EndMSF;
 	}
-	fclose(fp);
+	const bool writeFailed=ferror(fp)!=0;
+	if(fclose(fp)!=0 || writeFailed){
+		CString cs;
+		cs.Format(MSG(106),m_CueFileName);
+		m_LogWnd->AddMessage(LOG_ERROR,cs);
+		return;
+	}
+	m_ChdCue=m_CuePath;
 
 	{
 		CString cs;
@@ -323,7 +385,19 @@ DWORD CReadThread::GetTime(void)
 	return st.wMilliseconds + 1000 * (st.wSecond + 60 * (st.wMinute + 60 * (st.wHour + 24 * (st.wDay + 365 * st.wYear))));
 }
 
-bool CReadThread::ReadCD(MSFAddress Start, MSFAddress End,int TrackType)
+bool CReadThread::ReadVerificationAudio(int lba,int count,BYTE* buffer,bool alternate)
+{
+	if(m_StopFlag || !theSetting.m_UseSPTI) return false;
+	const int method=theSetting.m_ReadAudioMethod;
+	if(method<1 || method>2) return false;
+	SRB_ExecSCSICmd cmd;
+	auto& drive=*static_cast<CSptiDriver*>(m_CD->GetAspiCtrl());
+	const auto& format=audioCommands[alternate ? 3-method : method];
+	const bool ok=ReadProgramBatch(drive,lba+150,count,format,buffer,cmd);
+	return ok && !m_StopFlag;
+}
+
+bool CReadThread::ReadCD(MSFAddress Start, MSFAddress End,int TrackType,bool allowBatch,int boundaryGuard)
 {
 	CReadProgressDialog *Dlg = (CReadProgressDialog*)m_ParentWnd;
 	DWORD lba,lbaStart,lbaEnd;
@@ -334,9 +408,16 @@ bool CReadThread::ReadCD(MSFAddress Start, MSFAddress End,int TrackType)
 	BYTE TrackMode;
 	int BurstErrorCount;
 
-	Buffer = PGB(B);
+	BYTE* const singleBuffer=PGB(B);
 	lbaStart = Start.GetByLBA();
 	lbaEnd = End.GetByLBA();
+	const DWORD batchEnd=lbaEnd-(std::min)(DWORD(boundaryGuard),lbaEnd-lbaStart);
+	const int method=theSetting.m_ReadAudioMethod;
+	const BatchCommand format=TrackType==TRACKTYPE_DATA ? BatchCommand{0,0xf8,true} :
+		(method>0 && method<7 ? audioCommands[method] : BatchCommand{});
+	bool batchEnabled=allowBatch && theSetting.m_UseSPTI && lbaStart>=150 && format.fields!=0;
+	alignas(16) std::array<mixed::Sector,batchSectors> batch;
+	int nextBuffered=0, buffered=0;
 
 	Dlg->m_Progress.SetPos(0);
 	Percent = 0;
@@ -370,9 +451,35 @@ bool CReadThread::ReadCD(MSFAddress Start, MSFAddress End,int TrackType)
 			return false;
 		}
 		msf = lba;
+		Buffer=singleBuffer;
+		if(nextBuffered==buffered && batchEnabled && lba>lbaStart && lba<batchEnd){
+			const int count=int((std::min)(DWORD(batchSectors),batchEnd-lba));
+			if(count>1){
+				SRB_ExecSCSICmd cmd;
+				auto& drive=*static_cast<CSptiDriver*>(m_CD->GetAspiCtrl());
+				buffered=0;
+				nextBuffered=0;
+				if(ReadProgramBatch(drive,lba,count,format,batch.front().data(),cmd)){
+					for(;buffered<count;++buffered){
+						if(TrackType==TRACKTYPE_DATA &&
+						   (!mixed::dataHeader(batch[buffered],int(lba)-150+buffered) ||
+						    batch[buffered][15]!=TrackMode)) break;
+					}
+				} else if((cmd.SenseArea[2]&15)==6 && cmd.SenseArea[12]==0x28){
+					m_LogWnd->AddMessage(LOG_ERROR,"Disc changed during batch read.");
+					return false;
+				}
+				if(m_StopFlag) return false;
+				batchEnabled=buffered==count;
+			}
+		}
 
 		//   read
-		if(TrackType == TRACKTYPE_DATA){
+		if(nextBuffered<buffered){
+			Buffer=batch[nextBuffered++].data();
+			RetFlag=true;
+			++m_BatchedSectors;
+		} else if(TrackType == TRACKTYPE_DATA){
 			RetFlag = m_CD->ReadCDRaw(msf,Buffer);
 			if(RetFlag == false && (lba+150) >= lbaEnd){
 				RetFlag = m_CD->ReadCDAudio(msf,Buffer);

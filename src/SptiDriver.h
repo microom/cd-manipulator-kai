@@ -62,6 +62,7 @@ public:
 	virtual BOOL IsActive(void);
 	virtual void Initialize(void);
 	virtual void InitialAsync(void);
+	bool ExactRead(SRB_ExecSCSICmd &cmd, DWORD timeout=0xffff);
 	virtual void FinalizeAsync(void);
 	virtual bool ExecuteCommandAsync(SRB_ExecSCSICmd &cmd);
 	virtual int GetDeviceCount(void);
@@ -69,6 +70,7 @@ public:
 	virtual void SetDevice(int DeviceNo);
 	virtual int GetCurrentDevice(void);
 protected:
+	void Execute(SRB_ExecSCSICmd &cmd, DWORD timeout);
 	char m_Address[27];
 	int m_DeviceCount;
 	int m_CurrentDevice;

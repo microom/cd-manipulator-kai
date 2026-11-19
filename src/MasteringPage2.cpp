@@ -310,7 +310,8 @@ CDirStructure * CMasteringPage2::AddFolder(LPCSTR FolderName)
 		CString cs;
 		struct tm *tmp;
 		CTime NowTime = CTime::GetCurrentTime();
-		tmp = NowTime.GetGmtTm();
+		struct tm utc;
+		tmp = NowTime.GetGmtTm(&utc);
 
 		NewFolder = p->CreateDirectory();
 

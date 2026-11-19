@@ -34,6 +34,9 @@ public:
 	afx_msg void OnBnClickedCancel();
 	CCDController *m_CD;
 	bool m_SettingAtCopy;
+	enum { MixedEngine = 4 };
+	bool m_ReadMixed = false;
+	CString m_LayoutFile;
 	void SetLanguage(void);
 	CDeviceList m_DriveList;
 	afx_msg void OnCbnSelchangeDrivelist();

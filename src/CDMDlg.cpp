@@ -64,7 +64,7 @@ BOOL CAboutDlg::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	// TODO :  ここに初期化を追加してください
-	m_VerString.Format("CD Manipulator Version %s",APP_VERSION);
+	m_VerString.Format(CDM_PRODUCT_NAME " %s",APP_VERSION);
 
 	SetWindowText(theSetting.m_Lang.m_Str[LP_ABOUT + 0]);
 	this->SetDlgItemText(IDC_SUBTITLE,theSetting.m_Lang.m_Str[LP_ABOUT + 1]);
@@ -122,6 +122,7 @@ BEGIN_MESSAGE_MAP(CCDMDlg, CDialog)
 ON_CBN_SELCHANGE(IDC_DRIVELIST, OnCbnSelchangeDrivelist)
 ON_COMMAND(ID_TOOL_TOCFROMSESSION, OnToolTocfromsession)
 ON_COMMAND(ID_TOOL_CREATEIMAGE, OnToolCreateimage)
+ON_COMMAND(ID_MIXED_DISC, OnMixedDisc)
 ON_COMMAND(ID_VIEW_LOG, OnViewLog)
 ON_COMMAND(ID_TOOL_READTRACK, OnToolReadtrack)
 ON_CBN_SELCHANGE(IDC_SESSIONLIST, OnCbnSelchangeSessionlist)
@@ -245,7 +246,7 @@ void CCDMDlg::InitializeControlls(void)
 		m_LogWnd->LoadFrame(IDR_LOGFRAME,WS_OVERLAPPEDWINDOW | FWS_ADDTOTITLE,NULL,NULL);
 
 		//   set start log
-		cs.Format("CD Manipulator Version %s",APP_VERSION);
+		cs.Format(CDM_PRODUCT_NAME " %s",APP_VERSION);
 		m_LogWnd->AddMessage(LOG_INFO,cs);
 		m_LogWnd->DumpSystemVersion();
 	}
@@ -383,6 +384,28 @@ void CCDMDlg::OnToolTocfromsession()
 	}
 }
 
+void CCDMDlg::OnMixedDisc()
+{
+	if(!theSetting.m_UseSPTI || !m_CD.ReadTOC()){
+		MessageBox("SPTIのドライブを選び、ディスクを認識させてください。");
+		return;
+	}
+	CString layout;
+	int choice = MessageBox("同じ盤のImgBurn版CUEとBINを参照しますか？\nはい：目次を照合し、データ直前で読めた音声の末尾も保存します。\nいいえ：実ディスクを読み、読めないpregapは位置を確認できた場合だけ省きます。", "PCE-CD 読み取り", MB_YESNOCANCEL);
+	if(choice == IDCANCEL) return;
+	if(choice == IDYES){
+		CFileDialog ref(TRUE,"cue",NULL,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,"CUE (*.cue)|*.cue||",this);
+		ref.m_ofn.lpstrTitle = "以前の吸い出しのCUEを選択";
+		if(ref.DoModal() != IDOK) return;
+		layout = ref.GetPathName();
+	}
+	CFileDialog dst(FALSE,"cue",NULL,OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR,"CUE (*.cue)|*.cue||",this);
+	dst.m_ofn.lpstrTitle = "新しい吸い出しの保存先（未使用の名前）";
+	if(dst.DoModal() != IDOK) return;
+	CReadProgressDialog progress;
+	progress.ReadMixed(&m_CD,m_LogWnd,dst.GetPathName(),layout);
+}
+
 void CCDMDlg::OnToolCreateimage()
 {
 	// TODO : ここにコマンド ハンドラ コードを追加します。
@@ -391,6 +414,13 @@ void CCDMDlg::OnToolCreateimage()
 	Dlg.m_CD = &m_CD;
 	if(Dlg.DoModal() == IDOK){
 		CReadProgressDialog ReadDlg;
+		const bool createChd=theSetting.m_ReadEngine==0 && !theSetting.m_TestReadMode &&
+		                     theSetting.m_CreateChd && !theSetting.AvailableChdman().IsEmpty();
+		if(Dlg.m_ReadMixed){
+			ReadDlg.ReadMixed(&m_CD,m_LogWnd,Dlg.m_ImageName,Dlg.m_LayoutFile);
+			OnCdRecognize();
+			return;
+		}
 		while(1){
 			if(theSetting.m_ReadEngine == 0 && m_CD.ReadTOC()){
 				TableOfContents *Toc;
@@ -402,6 +432,11 @@ void CCDMDlg::OnToolCreateimage()
 				}
 			}
 			if(m_CD.ReadTOC()){
+				if(CReadThread::CanAutoReadMixed(*m_CD.GetTOC())){
+					m_LogWnd->AddMessage(LOG_INFO,"Single-session: mixed CD selected automatically from TOC");
+					ReadDlg.ReadMixed(&m_CD,m_LogWnd,Dlg.m_ImageName,"",createChd);
+					break;
+				}
 				if(theSetting.m_ReadEngine == 0 && theSetting.m_AnalyzeSubQ){
 					CSubQProgressDialog dlg;
 					OnCdRecognize();
@@ -410,7 +445,7 @@ void CCDMDlg::OnToolCreateimage()
 						m_CD.ReadTOC();
 					}
 				}
-				ReadDlg.ReadDisc(&m_CD,m_LogWnd,Dlg.m_ImageName);
+				ReadDlg.ReadDisc(&m_CD,m_LogWnd,Dlg.m_ImageName,true,createChd);
 				break;
 			} else {
 				if(MessageBox(MSG(75),CONF_MSG,MB_YESNO) == IDNO){
@@ -892,7 +927,7 @@ void CCDMDlg::NotifyButton(void)
 	}
 
 	CString cs;
-	cs.Format("CD Manipulator Version %s",APP_VERSION);
+	cs.Format(CDM_PRODUCT_NAME " %s",APP_VERSION);
 	ViewMessage(cs);
 }
 
@@ -962,7 +997,7 @@ void CCDMDlg::SetLanguage(void)
 			GetMenu()->ModifyMenu(MenuString[i][0],MF_BYCOMMAND | MF_STRING,MenuString[i][0],theSetting.m_Lang.m_Str[LP_MAINMENU + MenuString[i][1]]);
 		}
 
-		SetWindowText(theSetting.m_Lang.m_Str[LP_MAIN + 0]);
+		SetWindowText(CDM_PRODUCT_NAME);
 		for(i=0;i<8;i++){
 			SetDlgItemText(CtrlString[i][0],theSetting.m_Lang.m_Str[LP_MAIN + CtrlString[i][1]]);
 		}

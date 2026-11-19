@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.21)
+project(CDManipulatorKai LANGUAGES CXX RC)
+if(DEFINED CDM_SHOWINCLUDES_PREFIX)
+    # The MinGW build of CMake can misdecode cl's UTF-8 Japanese output.
+    set(CMAKE_CL_SHOWINCLUDES_PREFIX "${CDM_SHOWINCLUDES_PREFIX}")
+    set(CMAKE_CXX_CL_SHOWINCLUDES_PREFIX "${CDM_SHOWINCLUDES_PREFIX}")
+endif()
+if(NOT MSVC OR NOT CMAKE_SIZEOF_VOID_P EQUAL 4)
+    message(FATAL_ERROR "Use the MSVC x86 developer environment (32-bit).")
+endif()
+# Preserve upstream's static MFC / multibyte / static CRT configuration.
+set(CMAKE_MFC_FLAG 1)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+file(GLOB CDM_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
+# ECCEDC.cpp is in the archive but is not part of upstream cdm.vcproj.
+list(REMOVE_ITEM CDM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ECCEDC.cpp")
+add_executable(CdManipulator WIN32 ${CDM_SOURCES} src/cdm.rc)
+option(CDM_SKIP_AUDIO_TAIL "Skip additional CD-DA reads in confirmed pregaps" ON)
+if(CDM_SKIP_AUDIO_TAIL)
+    target_compile_definitions(CdManipulator PRIVATE CDM_SKIP_AUDIO_TAIL)
+endif()
+target_include_directories(CdManipulator PRIVATE src)
+target_compile_definitions(CdManipulator PRIVATE _MBCS WINVER=0x0501 _WIN32_WINNT=0x0501
+    _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS _AFX_SECURE_NO_WARNINGS)
+target_compile_options(CdManipulator PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:/source-charset:.932 /execution-charset:.932 /Zc:forScope- /W3>)
+target_link_libraries(CdManipulator PRIVATE htmlhelp winmm)
+add_executable(MixedDiscTests tests/MixedDiscTests.cpp)
+target_include_directories(MixedDiscTests PRIVATE src)
+enable_testing()
+add_test(NAME mixed_disc COMMAND MixedDiscTests)

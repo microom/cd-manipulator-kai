@@ -22,16 +22,19 @@ public:
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV サポート
 	CReadThread m_Thread;
+	bool m_ShowTrackProgress = false;
 
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedOk();
-	void ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCSTR FileName);
+	void ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCSTR FileName,bool verify=false,bool createChd=false);
+	void ReadMixed(CCDController *cd,CLogWindow *log,LPCSTR output,LPCSTR layout,bool createChd=false);
 	void ReadTrack(CCDController * cd, CLogWindow * logWnd, LPCSTR FileName);
 	virtual BOOL OnInitDialog();
 	CString m_Percent;
 	CProgressCtrl m_Progress;
 	CString m_Message;
+	CString m_CompletionDetail;
 	afx_msg void OnBnClickedCancel();
 	CButton m_CancelButton;
 	afx_msg void OnBnClickedLog();
@@ -41,4 +44,6 @@ public:
 	bool m_NoConfirm;
 	bool m_Stopped;
 	afx_msg void OnUpdateDialog();
+	void SetTrackProgress(int current,int total);
+	afx_msg LRESULT OnTrackProgress(WPARAM current,LPARAM total);
 };

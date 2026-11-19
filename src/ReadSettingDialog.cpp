@@ -44,6 +44,14 @@ END_MESSAGE_MAP()
 void CReadSettingDialog::OnBnClickedBrowsfile()
 {
 	// TODO : ここにコントロール通知ハンドラ コードを追加します。
+	if(m_EngineList.GetCurSel() == MixedEngine){
+		CFileDialog dst(FALSE,"cue",NULL,OFN_PATHMUSTEXIST|OFN_NOCHANGEDIR,"CUE (*.cue)|*.cue||",this);
+		if(dst.DoModal() == IDOK){
+			m_ImageName = dst.GetPathName();
+			UpdateData(FALSE);
+		}
+		return;
+	}
 	if(m_EngineList.GetCurSel() == 3){
 		CFileDialog dlg(TRUE,NULL,NULL,OFN_HIDEREADONLY |OFN_OVERWRITEPROMPT,MSG(22));
 
@@ -70,6 +78,22 @@ void CReadSettingDialog::OnBnClickedOk()
 	// TODO : ここにコントロール通知ハンドラ コードを追加します。
 	OnCbnSelchangeEnginelist();
 
+	if(m_CurrentEngine == MixedEngine){
+		if(m_ImageName.Right(4).CompareNoCase(".cue") != 0){
+			MessageBox("保存先に新しい .cue ファイル名を指定してください。");
+			return;
+		}
+		if(IsDlgButtonChecked(IDC_MIXED_REFERENCE) == BST_CHECKED){
+			CFileDialog ref(TRUE,"cue",NULL,OFN_FILEMUSTEXIST|OFN_NOCHANGEDIR,"CUE (*.cue)|*.cue||",this);
+			ref.m_ofn.lpstrTitle = "同じディスクの参照用CUEを選択";
+			if(ref.DoModal() != IDOK) return;
+			m_LayoutFile = ref.GetPathName();
+		}
+		m_ReadMixed = true;
+		theSetting.m_LastAccessFile = m_ImageName;
+		OnOK();
+		return;
+	}
 	theSetting.m_ReadEngine = m_EngineList.GetCurSel();
 	if(theSetting.m_ReadEngine == 2){
 		theSetting.m_TestReadMode = false;
@@ -122,7 +146,7 @@ void CReadSettingDialog::OnBnClickedCancel()
 	// TODO : ここにコントロール通知ハンドラ コードを追加します。
 	OnCbnSelchangeEnginelist();
 
-	theSetting.m_ReadEngine = m_EngineList.GetCurSel();
+	if(m_CurrentEngine != MixedEngine) theSetting.m_ReadEngine = m_CurrentEngine;
 
 	if(m_SettingAtCopy){
 		theSetting.m_CopyTempFile = m_ImageName;
@@ -154,7 +178,13 @@ BOOL CReadSettingDialog::OnInitDialog()
 	m_CurrentEngine = 0;
 	m_Page1.Load();
 
-	m_EngineList.InsertString(0,STR(5));
+	CString automatic;
+	if(!m_SettingAtCopy && theSetting.m_UseSPTI){
+		const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
+		if(japanese) automatic="自動（シングルセッション）";
+		else automatic.Format("Auto (%s)",STR(5));
+	}
+	m_EngineList.InsertString(0,automatic.IsEmpty() ? STR(5) : automatic);
 	m_EngineList.InsertString(1,STR(6));
 #if ALPHA_MODE
 	m_EngineList.InsertString(2,STR(19));
@@ -163,6 +193,11 @@ BOOL CReadSettingDialog::OnInitDialog()
 #endif
 	if(!m_SettingAtCopy){
 		m_EngineList.InsertString(3,STR(18));
+#ifdef CDM_SKIP_AUDIO_TAIL
+        if(theSetting.m_UseSPTI) m_EngineList.InsertString(MixedEngine,"混在CD（追加読み取りなし）");
+#else
+        if(theSetting.m_UseSPTI) m_EngineList.InsertString(MixedEngine,"混在CD（音声末尾を保存）");
+#endif
 	} else {
 		if(theSetting.m_ReadEngine == 3){
 			theSetting.m_ReadEngine = 0;
@@ -243,6 +278,10 @@ void CReadSettingDialog::OnCbnSelchangeEnginelist()
 	m_Page3.Load();
 	m_Page4.Load();
 	m_CurrentEngine = m_EngineList.GetCurSel();
+	bool mixed = m_CurrentEngine == MixedEngine;
+	GetDlgItem(IDC_MIXED_REFERENCE)->ShowWindow(mixed ? SW_SHOW : SW_HIDE);
+	SetDlgItemText(IDC_ENGINE_NOTE,mixed ? "単一セッションの音声・データ混在CDを IMG＋CUE に保存します。" : "Under construction");
+	GetDlgItem(IDC_ENGINE_NOTE)->ShowWindow(mixed || m_CurrentEngine == 2 ? SW_SHOW : SW_HIDE);
 
 	switch(m_CurrentEngine){
 		case 0:

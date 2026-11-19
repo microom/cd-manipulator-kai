@@ -6,7 +6,8 @@
 #include "ReadProgressDialog.h"
 #include "Setting.h"
 #include "Mmsystem.h"
-#include "MessageDialog.h"
+
+namespace { constexpr UINT TrackProgressMessage=WM_APP+1; }
 
 // CReadProgressDialog ダイアログ
 
@@ -32,7 +33,7 @@ void CReadProgressDialog::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_PROGRESS, m_Progress);
 	DDX_Text(pDX, IDC_MESSAGE, m_Message);
 	DDX_Control(pDX, IDCANCEL, m_CancelButton);
-	DDX_Text(pDX, IDC_MULTI, m_Multi);
+	if(!m_ShowTrackProgress) DDX_Text(pDX, IDC_MULTI, m_Multi);
 }
 
 
@@ -42,6 +43,7 @@ BEGIN_MESSAGE_MAP(CReadProgressDialog, CDialog)
 	ON_BN_CLICKED(IDC_LOG, OnBnClickedLog)
 	ON_COMMAND(ID_WINDOW_CLOSE, OnWindowClose)
 	ON_COMMAND(ID_UPDATE_DIALOG, OnUpdateDialog)
+	ON_MESSAGE(TrackProgressMessage, OnTrackProgress)
 END_MESSAGE_MAP()
 
 
@@ -52,7 +54,7 @@ void CReadProgressDialog::OnBnClickedOk()
 	// TODO : ここにコントロール通知ハンドラ コードを追加します。
 }
 
-void CReadProgressDialog::ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCSTR FileName)
+void CReadProgressDialog::ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCSTR FileName,bool verify,bool createChd)
 {
 	int ReadAudioMethod;
 	CString DriveName,Message;
@@ -69,6 +71,8 @@ void CReadProgressDialog::ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCS
 	cd->GetAspiCtrl()->GetDeviceString(m_Thread.m_VendorName,m_Thread.m_ProductName,m_Thread.m_Revision,Address);
 
 	m_Thread.m_ReadImage = true;
+	m_Thread.m_VerifyAfterRead = verify;
+	m_Thread.m_CreateChdAfterRead = createChd;
 	ReadAudioMethod = theSetting.m_ReadAudioMethod;
 
 	DoModal();
@@ -77,6 +81,13 @@ void CReadProgressDialog::ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCS
 	cd->SetSpeed(0xff,0xff);
 
 	m_Thread.StopThread();
+}
+
+void CReadProgressDialog::ReadMixed(CCDController *cd,CLogWindow *log,LPCSTR output,LPCSTR layout,bool createChd)
+{
+	m_Thread.m_MixedDisc = true;
+	m_Thread.m_LayoutFile = layout;
+	ReadDisc(cd,log,output,false,createChd);
 }
 
 void CReadProgressDialog::ReadTrack(CCDController * cd, CLogWindow * logWnd, LPCSTR FileName)
@@ -106,6 +117,7 @@ void CReadProgressDialog::ReadTrack(CCDController * cd, CLogWindow * logWnd, LPC
 
 BOOL CReadProgressDialog::OnInitDialog()
 {
+	m_ShowTrackProgress = false;
 	CDialog::OnInitDialog();
 
 	// TODO :  ここに初期化を追加してください
@@ -124,7 +136,11 @@ void CReadProgressDialog::OnBnClickedCancel()
 {
 	// TODO : ここにコントロール通知ハンドラ コードを追加します。
 	m_Thread.m_LogWnd->AddMessage(LOG_WARNING,MSG(17));
-	if(m_Thread.m_StopFlag){
+	if(m_Thread.m_MixedDisc){
+		m_Thread.m_StopFlag = true;
+		m_Stopped = true;
+		m_CancelButton.EnableWindow(FALSE);
+	} else if(m_Thread.m_StopFlag){
 		OnCancel();
 	} else {
 		m_Thread.m_StopFlag = true;
@@ -145,7 +161,6 @@ void CReadProgressDialog::OnBnClickedLog()
 void CReadProgressDialog::OnWindowClose()
 {
 	// TODO : ここにコマンド ハンドラ コードを追加します。
-	CMessageDialog dlg;
 	m_Thread.StopThread();
 
 	if(m_Stopped){
@@ -155,12 +170,14 @@ void CReadProgressDialog::OnWindowClose()
 		if(theSetting.m_WavOnFail != ""){
 			PlaySound(theSetting.m_WavOnFail,NULL,SND_ASYNC);
 		}
-		dlg.MessageBox(CONF_MSG,cs);
+		MessageBox(cs,CONF_MSG,MB_OK);
 	} else if(!m_NoConfirm){
 		if(theSetting.m_WavOnSuccess != ""){
 			PlaySound(theSetting.m_WavOnSuccess,NULL,SND_ASYNC);
 		}
-		dlg.MessageBox(CONF_MSG,MSG(19));
+		CString message=MSG(19);
+		if(!m_CompletionDetail.IsEmpty()) message+="\n"+m_CompletionDetail;
+		MessageBox(message,CONF_MSG,MB_OK);
 	}
 
 	OnCancel();
@@ -175,4 +192,18 @@ void CReadProgressDialog::OnUpdateDialog()
 {
 	// TODO : ここにコマンド ハンドラ コードを追加します。
 	UpdateData(FALSE);
+}
+
+void CReadProgressDialog::SetTrackProgress(int current,int total)
+{
+	PostMessage(TrackProgressMessage,current,total);
+}
+
+LRESULT CReadProgressDialog::OnTrackProgress(WPARAM current,LPARAM total)
+{
+	CString progress;
+	progress.Format("%d / %d",static_cast<int>(current),static_cast<int>(total));
+	m_ShowTrackProgress = true;
+	SetDlgItemText(IDC_MULTI,progress);
+	return 0;
 }

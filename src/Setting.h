@@ -18,6 +18,11 @@ public:
 	int m_BurstErrorCount;
 	int m_BurstErrorSkip;
 	bool m_TestReadMode;
+	bool m_RedumpRetry;
+	bool m_CreateChd = false;
+	CStringW AvailableChdman() const;
+	CString m_RedumpDb;
+	CString AvailableRedumpDb() const;
 	bool m_IgnoreError;
 	bool m_FastErrorSkip;
 	bool m_SwapChannel;

@@ -110,6 +110,11 @@ DWORD CSptiDriver::GetVersion()
 
 void CSptiDriver::ExecuteCommand(SRB_ExecSCSICmd &cmd)
 {
+	Execute(cmd,0xffff);
+}
+
+void CSptiDriver::Execute(SRB_ExecSCSICmd &cmd, DWORD timeout)
+{
 	DWORD BytesReturned;
 	DWORD CommandLength;
 	BOOL Status;
@@ -132,7 +137,7 @@ void CSptiDriver::ExecuteCommand(SRB_ExecSCSICmd &cmd)
 		m_SptiCmd.sptd.DataIn = SCSI_IOCTL_DATA_UNSPECIFIED;
 	}
 	m_SptiCmd.sptd.DataTransferLength = cmd.SRB_BufLen;
-	m_SptiCmd.sptd.TimeOutValue = 0xffff;
+	m_SptiCmd.sptd.TimeOutValue = timeout;
 	m_SptiCmd.sptd.CdbLength = cmd.SRB_CDBLen;
 	memcpy(&(m_SptiCmd.sptd.Cdb),&(cmd.CDBByte),16);
 
@@ -164,6 +169,12 @@ void CSptiDriver::ExecuteCommand(SRB_ExecSCSICmd &cmd)
 	memcpy(cmd.SenseArea,m_SptiCmd.ucSenseBuf,32);
 
 	return;
+}
+
+bool CSptiDriver::ExactRead(SRB_ExecSCSICmd &cmd, DWORD timeout)
+{
+	Execute(cmd,timeout);
+	return cmd.SRB_Status == SS_COMP && m_SptiCmd.sptd.DataTransferLength == cmd.SRB_BufLen;
 }
 
 void CSptiDriver::InitialAsync(void)
