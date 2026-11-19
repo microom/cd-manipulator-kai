@@ -23,6 +23,10 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV サポート
 	CReadThread m_Thread;
 	bool m_ShowTrackProgress = false;
+	DWORD m_ReadStarted = 0;
+	UINT_PTR m_ElapsedTimer = 0;
+	void UpdateElapsedTime();
+	afx_msg void OnTimer(UINT_PTR timerId);
 
 	DECLARE_MESSAGE_MAP()
 public:

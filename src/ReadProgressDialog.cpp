@@ -7,7 +7,10 @@
 #include "Setting.h"
 #include "Mmsystem.h"
 
-namespace { constexpr UINT TrackProgressMessage=WM_APP+1; }
+namespace {
+constexpr UINT TrackProgressMessage=WM_APP+1;
+constexpr UINT_PTR ElapsedTimerId=1;
+}
 
 // CReadProgressDialog ダイアログ
 
@@ -44,6 +47,7 @@ BEGIN_MESSAGE_MAP(CReadProgressDialog, CDialog)
 	ON_COMMAND(ID_WINDOW_CLOSE, OnWindowClose)
 	ON_COMMAND(ID_UPDATE_DIALOG, OnUpdateDialog)
 	ON_MESSAGE(TrackProgressMessage, OnTrackProgress)
+	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
 
@@ -73,6 +77,7 @@ void CReadProgressDialog::ReadDisc(CCDController * cd, CLogWindow * logWnd, LPCS
 	m_Thread.m_ReadImage = true;
 	m_Thread.m_VerifyAfterRead = verify;
 	m_Thread.m_CreateChdAfterRead = createChd;
+	m_Thread.m_DeleteChdSource = createChd && theSetting.m_DeleteChdSource;
 	ReadAudioMethod = theSetting.m_ReadAudioMethod;
 
 	DoModal();
@@ -121,6 +126,9 @@ BOOL CReadProgressDialog::OnInitDialog()
 	CDialog::OnInitDialog();
 
 	// TODO :  ここに初期化を追加してください
+	m_ReadStarted=GetTickCount();
+	UpdateElapsedTime();
+	m_ElapsedTimer=SetTimer(ElapsedTimerId,1000,nullptr);
 	m_Thread.StartThread();
 
 	SetWindowText(theSetting.m_Lang.m_Str[LP_READP + 0]);
@@ -162,6 +170,11 @@ void CReadProgressDialog::OnWindowClose()
 {
 	// TODO : ここにコマンド ハンドラ コードを追加します。
 	m_Thread.StopThread();
+	if (m_ElapsedTimer) {
+		KillTimer(m_ElapsedTimer);
+		m_ElapsedTimer=0;
+		UpdateElapsedTime();
+	}
 
 	if(m_Stopped){
 	} else if(!m_Thread.m_Success){
@@ -186,6 +199,24 @@ void CReadProgressDialog::OnWindowClose()
 bool CReadProgressDialog::GetSuccessFlag(void)
 {
 	return m_Thread.m_Success;
+}
+
+void CReadProgressDialog::UpdateElapsedTime()
+{
+	const DWORD seconds=(GetTickCount()-m_ReadStarted)/1000;
+	const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
+	CString elapsed;
+	elapsed.Format(japanese ? "経過 %02lu:%02lu:%02lu" : "Elapsed %02lu:%02lu:%02lu",
+	               seconds/3600,(seconds/60)%60,seconds%60);
+	SetDlgItemText(IDC_READ_ELAPSED,elapsed);
+}
+
+void CReadProgressDialog::OnTimer(UINT_PTR timerId)
+{
+	if (timerId==m_ElapsedTimer)
+		UpdateElapsedTime();
+	else
+		CDialog::OnTimer(timerId);
 }
 
 void CReadProgressDialog::OnUpdateDialog()

@@ -32,53 +32,25 @@
 class CAboutDlg : public CDialog
 {
 public:
-	CAboutDlg();
+    CAboutDlg() : CDialog(IDD_ABOUTBOX) {}
 
-// ダイアログ データ
-	enum { IDD = IDD_ABOUTBOX };
-
-	protected:
-	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV サポート
-
-// 実装
 protected:
-	DECLARE_MESSAGE_MAP()
-public:
-	CString m_VerString;
-	virtual BOOL OnInitDialog();
+    virtual BOOL OnInitDialog();
 };
-
-CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
-, m_VerString(_T(""))
-{
-}
-
-void CAboutDlg::DoDataExchange(CDataExchange* pDX)
-{
-	CDialog::DoDataExchange(pDX);
-	DDX_Text(pDX, ID_VERSTRING, m_VerString);
-}
 
 BOOL CAboutDlg::OnInitDialog()
 {
-	CDialog::OnInitDialog();
+    CDialog::OnInitDialog();
 
-	// TODO :  ここに初期化を追加してください
-	m_VerString.Format(CDM_PRODUCT_NAME " %s",APP_VERSION);
-
-	SetWindowText(theSetting.m_Lang.m_Str[LP_ABOUT + 0]);
-	this->SetDlgItemText(IDC_SUBTITLE,theSetting.m_Lang.m_Str[LP_ABOUT + 1]);
-	this->SetDlgItemText(IDC_AUTHOR,"Copyright (C) 2002-2004 Y.Kanechika（ごーるど）");
-	SetDlgItemText(IDOK,theSetting.m_Lang.m_Str[1]);
-	UpdateData(FALSE);
-	return TRUE;  // return TRUE unless you set the focus to a control
-	// 例外 : OCX プロパティ ページは必ず FALSE を返します。
+    CString title(theSetting.m_Lang.m_Str[LP_ABOUT]);
+    title.Replace("CD Manipulator", CDM_PRODUCT_NAME);
+    if (!title.IsEmpty())
+        SetWindowText(title);
+    SetDlgItemText(IDOK, theSetting.m_Lang.m_Str[1]);
+    return TRUE;
 }
 
-BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
-END_MESSAGE_MAP()
-
-
+//
 // CCDMDlg ダイアログ
 
 

@@ -18,8 +18,10 @@ public:
 	int m_BurstErrorCount;
 	int m_BurstErrorSkip;
 	bool m_TestReadMode;
+	static constexpr bool RedumpAudioCorrectionEnabled = false;
 	bool m_RedumpRetry;
 	bool m_CreateChd = false;
+	bool m_DeleteChdSource = false;
 	CStringW AvailableChdman() const;
 	CString m_RedumpDb;
 	CString AvailableRedumpDb() const;

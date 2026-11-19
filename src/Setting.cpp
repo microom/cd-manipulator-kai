@@ -159,6 +159,7 @@ void CSetting::Load(void)
 	m_TestReadMode = IntToBool(ReadInt("ReadSetting","TestReadMode",0));
 	m_RedumpRetry = IntToBool(ReadInt("ReadSetting","RedumpRetry",1));
 	m_CreateChd = IntToBool(ReadInt("ReadSetting","CreateChd",0));
+	m_DeleteChdSource = IntToBool(ReadInt("ReadSetting","DeleteChdSource",0));
 	ReadString("ReadSetting","RedumpDb","",m_RedumpDb);
 	m_IgnoreError = IntToBool(ReadInt("ReadSetting","IgnoreError",0));
 	m_FastErrorSkip = IntToBool(ReadInt("ReadSetting","FastErrorSkip",0));
@@ -281,6 +282,7 @@ void CSetting::Save(void)
 	WriteInt("ReadSetting","TestReadMode",BoolToInt(m_TestReadMode));
 	WriteInt("ReadSetting","RedumpRetry",BoolToInt(m_RedumpRetry));
 	WriteInt("ReadSetting","CreateChd",BoolToInt(m_CreateChd));
+	WriteInt("ReadSetting","DeleteChdSource",BoolToInt(m_DeleteChdSource));
 	WriteString("ReadSetting","RedumpDb",m_RedumpDb);
 	WriteInt("ReadSetting","IgnoreError",BoolToInt(m_IgnoreError));
 	WriteInt("ReadSetting","FastErrorSkip",BoolToInt(m_FastErrorSkip));

@@ -252,6 +252,7 @@ CString saveVerifiedCopy(const CString& cue,const CString& image,const std::vect
 
 void CReadThread::VerifyRedump()
 {
+    if (!CSetting::RedumpAudioCorrectionEnabled) return;
     const CString dbPath=theSetting.AvailableRedumpDb();
     if (!m_VerifyAfterRead || !theSetting.m_RedumpRetry || !theSetting.m_UseSPTI || dbPath.IsEmpty() ||
         theSetting.m_SwapChannel || theSetting.m_IgnoreError || theSetting.m_FastErrorSkip ||

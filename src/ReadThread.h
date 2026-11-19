@@ -15,6 +15,7 @@ public:
 	bool m_MixedDisc = false;
 	bool m_VerifyAfterRead = false;
 	bool m_CreateChdAfterRead = false;
+	bool m_DeleteChdSource = false;
 	CString m_LayoutFile;
 	static bool CanAutoReadMixed(TableOfContents& toc);
 	DWORD ReadMixedDisc();
