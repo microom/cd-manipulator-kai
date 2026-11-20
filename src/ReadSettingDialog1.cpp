@@ -41,6 +41,7 @@ void CReadSettingDialog1::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_REDUMP_RETRY, m_RedumpRetry);
 	DDX_Check(pDX, IDC_CREATE_CHD, m_CreateChd);
 	DDX_Check(pDX, IDC_DELETE_CHD_SOURCE, m_DeleteChdSource);
+	DDX_Check(pDX, IDC_ZERO_FILL_FINAL, m_ZeroFillFinalSector);
 	DDX_Check(pDX, IDC_AUTODETECT_COMMAND, m_AutoDetectReadMethod);
 	DDX_Control(pDX, IDC_DATASPEED2, m_DataSpeed);
 	DDX_Control(pDX, IDC_AUDIOSPEED, m_AudioSpeed);
@@ -75,6 +76,7 @@ void CReadSettingDialog1::Load(void)
 	m_RedumpRetry = CSetting::RedumpAudioCorrectionEnabled && theSetting.m_RedumpRetry;
 	m_CreateChd = theSetting.m_CreateChd;
 	m_DeleteChdSource = theSetting.m_DeleteChdSource;
+	m_ZeroFillFinalSector = theSetting.m_ZeroFillFinalSector;
 
 	if(theSetting.m_Speed_Audio <= 1){
 		m_AudioSpeed.SetCurSel(4);
@@ -128,6 +130,8 @@ void CReadSettingDialog1::Save(void)
 	theSetting.m_SwapChannel = (m_SwapChannel == TRUE) ? true:false;
 	theSetting.m_AutoDetectMethod = (m_AutoDetectReadMethod == TRUE) ? true:false;
 	theSetting.m_ExtSetting_Read = m_ExtMenu;
+	if(!m_SettingAtCopy)
+		theSetting.m_ZeroFillFinalSector = m_ZeroFillFinalSector!=FALSE;
 	if(GetDlgItem(IDC_REDUMP_RETRY)->IsWindowEnabled())
 		theSetting.m_RedumpRetry = m_RedumpRetry!=FALSE;
 	if(!m_SettingAtCopy && !theSetting.AvailableChdman().IsEmpty()){
@@ -175,6 +179,7 @@ BOOL CReadSettingDialog1::OnInitDialog()
 		SetDlgItemText(IDC_REDUMP_RETRY,"Retry mismatched audio against DB");
 		SetDlgItemText(IDC_CREATE_CHD,"Also create CHD");
 		SetDlgItemText(IDC_DELETE_CHD_SOURCE,"Delete IMG/CUE after CHD");
+		SetDlgItemText(IDC_ZERO_FILL_FINAL,"Zero-fill unreadable final sector");
 	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -196,6 +201,9 @@ void CReadSettingDialog1::OnBnClickedExtmenu()
 	auto* cleanup=GetDlgItem(IDC_DELETE_CHD_SOURCE);
 	cleanup->ShowWindow(m_ExtMenu && !m_SettingAtCopy ? SW_SHOW : SW_HIDE);
 	cleanup->EnableWindow(chd->IsWindowEnabled() && m_CreateChd);
+	auto* zeroFill=GetDlgItem(IDC_ZERO_FILL_FINAL);
+	zeroFill->ShowWindow(m_ExtMenu && !m_SettingAtCopy ? SW_SHOW : SW_HIDE);
+	zeroFill->EnableWindow(!m_SettingAtCopy && !m_TestRead && theSetting.m_UseSPTI);
 	if(m_ExtMenu){
 		GetDlgItem(IDC_SWAPCHANNEL       )->ShowWindow(SW_SHOW);
 		GetDlgItem(IDC_AUTODETECT_COMMAND)->ShowWindow(SW_SHOW);

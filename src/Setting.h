@@ -22,6 +22,7 @@ public:
 	bool m_RedumpRetry;
 	bool m_CreateChd = false;
 	bool m_DeleteChdSource = false;
+	bool m_ZeroFillFinalSector = true;
 	CStringW AvailableChdman() const;
 	CString m_RedumpDb;
 	CString AvailableRedumpDb() const;

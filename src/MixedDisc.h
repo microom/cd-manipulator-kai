@@ -352,7 +352,9 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
             ? end-maxVerifiedGap : end;
         for (int lba=t.start; lba<end; ++lba) {
             if (io.stopped()) return false;
-            if (!io.read(lba, t.mode, batchEnd, sector)) {
+            if (!io.read(lba, t.mode, batchEnd, sector) &&
+                !(!next && t.mode==1 && lba>t.start && lba==leadout-1 &&
+                  io.zeroFillFinalSector(i+1,lba,sector))) {
                 int gap = 0;
                 auto query = [&](int at,int tr,int idx,bool data){ return io.q(at,tr,idx,data); };
                 if (next && !hasReference && !streamed) {

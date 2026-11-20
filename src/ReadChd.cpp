@@ -205,7 +205,8 @@ void CReadThread::CreateChd()
                          : L"CHD creation failed.";
         break;
     }
-    dlg.m_CompletionDetail=CString(message);
+    if (!dlg.m_CompletionDetail.IsEmpty()) dlg.m_CompletionDetail+="\n";
+    dlg.m_CompletionDetail+=CString(message);
     if (!output.IsEmpty()) message+=L" "+output;
     m_LogWnd->AddMessage(severity,CString(message));
 }

@@ -33,6 +33,7 @@ public:
 	BOOL m_RedumpRetry=TRUE;
 	BOOL m_CreateChd=FALSE;
 	BOOL m_DeleteChdSource=FALSE;
+	BOOL m_ZeroFillFinalSector=TRUE;
 	BOOL m_AutoDetectReadMethod;
 	CComboBox m_DataSpeed;
 	CComboBox m_AudioSpeed;

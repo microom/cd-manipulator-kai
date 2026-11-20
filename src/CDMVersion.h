@@ -1,5 +1,5 @@
 #pragma once
 
 #define CDM_PRODUCT_NAME "CD Manipulator Kai"
-#define APP_VERSION "2.70-kai.4"
-#define CDM_FILE_VERSION 2,70,4,0
+#define APP_VERSION "2.70-kai.6"
+#define CDM_FILE_VERSION 2,70,6,0

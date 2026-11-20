@@ -573,6 +573,8 @@ BEGIN
                     BS_AUTOCHECKBOX | WS_TABSTOP,6,48,138,8
     CONTROL         "CHD作成後にIMG/CUEを削除",IDC_DELETE_CHD_SOURCE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,16,60,128,8
+    CONTROL         "読めない最終セクタを0補完する",IDC_ZERO_FILL_FINAL,"Button",
+                    BS_AUTOCHECKBOX | WS_TABSTOP,150,102,147,12
 END
 
 IDD_READSETTING_2 DIALOGEX 6, 70, 273, 104

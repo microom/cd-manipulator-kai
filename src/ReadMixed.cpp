@@ -52,12 +52,14 @@ class MixedIO {
     CReadProgressDialog& dlg;
     NewFile& image;
     const int trackCount;
+    const int leadout;
     int percent = -1;
     int preferred = 0;
     int preferredQ = 0;
     int qOffset[4] = {};
     CString qDetail;
     bool mediumChanged = false;
+    bool mode1ReadError = false;
     enum { Audio, Raw, Mode1, Mode2 };
     static constexpr int types[] = {1,0,2,3};
     static constexpr int fields[] = {0x10,0xf8,0xb8,0xf8};
@@ -132,8 +134,8 @@ class MixedIO {
         return true;
     }
 public:
-    MixedIO(CSptiDriver& d,CReadThread& w,CReadProgressDialog& p,NewFile& file,int tracks)
-        : drive(d),worker(w),dlg(p),image(file),trackCount(tracks) {}
+    MixedIO(CSptiDriver& d,CReadThread& w,CReadProgressDialog& p,NewFile& file,int tracks,int discEnd)
+        : drive(d),worker(w),dlg(p),image(file),trackCount(tracks),leadout(discEnd) {}
     bool stopped() { return worker.m_StopFlag || mediumChanged; }
     bool readAudioTail(int lba,int trackStart,int end,mixed::Sector& out) {
         if (fromBatch(lba,out)) return true;
@@ -306,9 +308,15 @@ public:
         }
     }
     bool read(int lba,int mode,int end,mixed::Sector& out) {
+        mode1ReadError=false;
         if (fromBatch(lba,out)) return true;
         buffered=0;
-        const int count=(std::min)(end-lba,batchSectors);
+        // Read the optional final MODE1 sector separately so its failure
+        // cannot discard the preceding batch.
+        const bool isolateLast=mode==1 && end==leadout && theSetting.m_ZeroFillFinalSector;
+        const int batchEnd=isolateLast ? end-1 : end;
+        const bool readingLast=isolateLast && lba==batchEnd;
+        const int count=(std::min)(batchEnd-lba,batchSectors);
         const bool canBatch=mode==0 ? preferred==Audio : mode>0 && preferred>=Raw;
         if (!batchFailed && canBatch && count>1) {
             ++batchCommands;
@@ -326,8 +334,16 @@ public:
             batchFailed=buffered!=count;
             if (fromBatch(lba,out)) return true;
         }
-        const int choices[] = {preferred,mode==0 ? Audio : Raw,Raw,Mode1,Mode2,Audio};
-        unsigned tried = 0;
+        if (readingLast) {
+            CString msg;
+            msg.Format("Reading final MODE1 sector at LBA %d separately.",lba);
+            worker.m_LogWnd->AddMessage(LOG_INFO,msg);
+        }
+        const int first=readingLast && preferred!=Mode1 ? Raw : preferred;
+        const int choices[] = {first,mode==0 ? Audio : Raw,Raw,Mode1,Mode2,Audio};
+        constexpr unsigned mode1Methods=(1u<<Raw)|(1u<<Mode1);
+        unsigned uncorrectable=0;
+        unsigned tried=0;
         for (int choice : choices) {
             if (stopped()) return false;
             if (choice<0 || (tried & (1u<<choice))) continue;
@@ -337,12 +353,31 @@ public:
                 preferred = choice;
                 return true;
             }
+            const unsigned method=1u<<choice;
+            if (mode==1 && (method & mode1Methods) &&
+                (cmd.SenseArea[2]&15)==3 && cmd.SenseArea[12]==0x11) {
+                mode1ReadError=true;
+                if (cmd.SenseArea[13]==0x05) uncorrectable|=method;
+            }
             CString msg;
             msg.Format("READ CD LBA %d type %d fields %02X: failed or short; sense %02X/%02X/%02X",
                 lba,types[choice],fields[choice],cmd.SenseArea[2]&15,cmd.SenseArea[12],cmd.SenseArea[13]);
             worker.m_LogWnd->AddMessage(LOG_WARNING,msg);
+            if (readingLast && uncorrectable==mode1Methods) break;
         }
         return false;
+    }
+    bool zeroFillFinalSector(int track,int lba,mixed::Sector& out) {
+        if (stopped() || !theSetting.m_ZeroFillFinalSector || !mode1ReadError) return false;
+        out.fill(0);
+        CString line;
+        line.Format("Track %02d LBA %d: unreadable final MODE1 sector replaced with 2352 zero bytes.",track,lba);
+        worker.m_LogWnd->AddMessage(LOG_WARNING,line);
+        const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
+        dlg.m_CompletionDetail=CString(japanese
+            ? L"\u8aad\u3081\u306a\u3044\u6700\u7d42\u30bb\u30af\u30bf\u30920\u3067\u88dc\u5b8c\u3057\u307e\u3057\u305f\u3002"
+            : L"The unreadable final sector was zero-filled.");
+        return true;
     }
     void reportBatches() {
         CString msg;
@@ -472,7 +507,7 @@ DWORD CReadThread::ReadMixedDisc() {
         GetFileAttributes(cuePart)!=INVALID_FILE_ATTRIBUTES) return fail("Output exists. Choose a new name.");
     NewFile image;
     if (!image.open(part)) return fail("Cannot create new .img.part. Choose a new name.");
-    MixedIO io(*static_cast<CSptiDriver*>(m_CD->GetAspiCtrl()),*this,dlg,image,int(tracks.size()));
+    MixedIO io(*static_cast<CSptiDriver*>(m_CD->GetAspiCtrl()),*this,dlg,image,int(tracks.size()),end);
     dlg.m_Progress.SetRange(0,100);
     m_LogWnd->AddMessage(LOG_INFO,hasReference ? "PCE-CD: reference layout" : "PCE-CD: disc layout");
 #ifdef CDM_SKIP_AUDIO_TAIL

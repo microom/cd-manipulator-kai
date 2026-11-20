@@ -13,6 +13,14 @@ struct FakeDrive {
     int audioEnd = 9, headerAt = -1, last = -1, cancelAt = -1;
     std::vector<int> kept, probes;
     bool trimOK = true, cancel = false;
+    bool allowFinalFill = false, dataReadError = true;
+    int filledLba = -1;
+    bool zeroFillFinalSector(int,int lba,mixed::Sector& s) {
+        if (!allowFinalFill || !dataReadError || stopped()) return false;
+        filledLba=lba;
+        s.fill(0);
+        return true;
+    }
     bool stopped() { return cancel; }
     bool streamGap(int,int,int,int) { return false; }
     mixed::AudioGap findAudioGap(int,int,int,int) {
@@ -194,6 +202,24 @@ void pceCompatibilityTests() {
     CHECK(!mixed::isPceCd(alternate,{{0,1},{16,0}},30));
 }
 void tests() {
+    // A final MODE1 read error may be filled without changing disc geometry.
+    for (bool enabled : {false,true}) {
+        FakeDrive drive;
+        drive.allowFinalFill=enabled;
+        drive.unreadable=15;
+        std::vector<mixed::Track> tracks{{0,0},{12,1,4}};
+        CHECK(mixed::acquire(tracks,16,true,drive,false)==enabled);
+        CHECK(drive.filledLba==(enabled ? 15 : -1));
+        if (enabled) CHECK(drive.kept.size()==12 && drive.kept.back()==0);
+    }
+    for (int unreadable : {12,14,15}) {
+        FakeDrive drive;
+        drive.allowFinalFill=true;
+        drive.unreadable=unreadable;
+        drive.dataReadError=unreadable!=15;
+        std::vector<mixed::Track> tracks{{0,0},{12,1,4}};
+        CHECK(!mixed::acquire(tracks,16,true,drive,false) && drive.filledLba==-1);
+    }
     catalogGapTests();
     pceCompatibilityTests();
     using mixed::Track;

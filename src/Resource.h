@@ -255,6 +255,7 @@
 #define IDC_CREATE_CHD                   1159
 #define IDC_DELETE_CHD_SOURCE            1160
 #define IDC_READ_ELAPSED                 1161
+#define IDC_ZERO_FILL_FINAL              1162
 
 // Next default values for new objects
 // 
@@ -262,7 +263,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        216
 #define _APS_NEXT_COMMAND_VALUE         32774
-#define _APS_NEXT_CONTROL_VALUE         1162
+#define _APS_NEXT_CONTROL_VALUE         1163
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
