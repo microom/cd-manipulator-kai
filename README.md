@@ -9,11 +9,16 @@ Y.Kanechika（ごーるど）さんの CD Manipulator 2.70 Final をベースに
 
 各バージョンの変更は [更新履歴](CHANGELOG.md) を参照してください。
 
+## セットアップ
+
+1. [CD Manipulator Kaiの最新版](https://github.com/microom/cd-manipulator-kai/releases/latest)からWindows版のZIPをダウンロードして展開し、`CdManipulator.exe` を起動します。 初回に日本語で使う場合は `Japanese.cml` を選びます。
+2. CHDも作る場合は、[MAME 0.287の公式配布](https://github.com/mamedev/mame/releases/tag/mame0287)からWindows版をダウンロードして展開し、`chdman.exe` を `CdManipulator.exe` と同じフォルダに置きます。
+
 ## 使い方
 
 ### CHDも生成する
 
-MAMEのWindows版を展開し、`chdman.exe` を `CdManipulator.exe` と同じフォルダに置きます。「CDイメージ作成」→「高度な設定」で「CHDも生成する」をオンにすると、指定したCUEと同じ場所にCHDができます。動作確認に使用したのは 0.287 です。[MAME 0.287公式配布](https://github.com/mamedev/mame/releases/tag/mame0287)
+「CDイメージ作成」→「高度な設定」で「CHDも生成する」をオンにすると、指定したCUEと同じ場所にCHDができます。
 
 「CHD作成後にIMG/CUEを削除」は初期値がオフです。オンにすると、CHDの整合性検査と保存が成功したあとに、変換元のIMGとCUEを削除します。
 
