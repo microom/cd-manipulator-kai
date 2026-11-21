@@ -12,7 +12,7 @@ Y.Kanechika（ごーるど）さんの CD Manipulator 2.70 Final をベースに
 ## セットアップ
 
 1. [CD Manipulator Kaiの最新版](https://github.com/microom/cd-manipulator-kai/releases/latest)からWindows版のZIPをダウンロードして展開し、`CdManipulator.exe` を起動します。 初回に日本語で使う場合は `Japanese.cml` を選びます。
-2. CHDも作る場合は、[MAME 0.287の公式配布](https://github.com/mamedev/mame/releases/tag/mame0287)からWindows版をダウンロードして展開し、`chdman.exe` を `CdManipulator.exe` と同じフォルダに置きます。
+2. CHDも作る場合は、[mame0287b_x64.exe（MAME公式・Windows x64）](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) をダウンロードして実行し、展開先を指定します。展開先の `chdman.exe` を `CdManipulator.exe` と同じフォルダにコピーします。
 
 ## 使い方
 
