@@ -8,7 +8,7 @@
 #define CHECK(x) do { if (!(x)) throw std::runtime_error(#x); } while (false)
 
 struct FakeDrive {
-    int preconfirmed=0, prefixAt=-1, firstData=11, silentUntil=-1;
+    int preconfirmed=0, prefixAt=-1, prefixCount=1, firstData=11, silentUntil=-1;
     int unreadable = 9, badQ = -1, writeFail = -1;
     int audioEnd = 9, headerAt = -1, last = -1, cancelAt = -1;
     std::vector<int> kept, probes;
@@ -26,8 +26,9 @@ struct FakeDrive {
     mixed::AudioGap findAudioGap(int,int,int,int) {
         mixed::AudioGap gap{preconfirmed,firstData};
         if (prefixAt>=0) {
-            gap.hasDataPrefix=true;
-            gap.dataPrefix.back()=static_cast<unsigned char>(prefixAt);
+            gap.dataPrefix.resize(prefixCount);
+            for (int i=0;i<prefixCount;++i)
+                gap.dataPrefix[i].back()=static_cast<unsigned char>(prefixAt+i);
         }
         return gap;
     }
@@ -270,6 +271,15 @@ void tests() {
     CHECK(mixed::acquire(preflightTracks,16,false,preflight,false));
     CHECK(preflight.probes.empty() && preflightTracks[1].omitted==3 && preflightTracks[1].storedGap==1);
     CHECK(preflight.kept==std::vector<int>({0,1,2,3,4,5,6,7,11,12,13,14,15}));
+    // Cobra has two readable INDEX 01 sectors before the TOC address.
+    preflightTracks=initial; preflight=FakeDrive();
+    preflight.preconfirmed=4; preflight.prefixAt=10; preflight.prefixCount=2; preflight.firstData=9;
+    CHECK(mixed::acquire(preflightTracks,16,false,preflight,false));
+    CHECK(preflightTracks[1].omitted==2 && preflightTracks[1].storedGap==2);
+    CHECK(preflight.kept==std::vector<int>({0,1,2,3,4,5,6,7,10,11,12,13,14,15}));
+    CHECK(mixed::cue("cobra.img",preflightTracks).find("PREGAP 00:00:02\r\n    INDEX 00 00:00:08\r\n    INDEX 01 00:00:10")!=std::string::npos);
+    preflightTracks=initial; preflight.writeFail=11;
+    CHECK(!mixed::acquire(preflightTracks,16,false,preflight,false));
     tracks[1].omitted=4; // input reference omits the whole gap
     auto text=mixed::cue("a.bin",tracks);
     CHECK(text.find("PREGAP 00:00:04\r\n    INDEX 01 00:00:08")!=std::string::npos);
@@ -333,9 +343,23 @@ void tests() {
     const mixed::QFrame ahead{{0x41,2,1,0,0,1,0,0,0x49,0x66,0x72,0x71}};
     const mixed::QFrame early{{0x41,2,1,0,0,0,0,0,0x49,0x64,0xf8,0x62}};
     const mixed::QFrame physicalToc{{0x41,2,1,0,0,1,0,0,0x49,0x65,0x42,0x12}};
-    CHECK(mixed::indexOneFrameEarly(early,physicalToc,3590,2));
-    CHECK(!mixed::indexOneFrameEarly(early,exact,3590,2));
-    CHECK(!mixed::indexOneFrameEarly(exact,ahead,3590,2));
+    std::vector<mixed::QFrame> positions{early,physicalToc};
+    auto at=[&](int lba) { return positions.at(lba-3589); };
+    CHECK(mixed::earlyDataFrames(at,3588,3590,2)==1);
+    positions.back()=exact;
+    CHECK(mixed::earlyDataFrames(at,3588,3590,2)==0);
+    positions={exact,ahead};
+    CHECK(mixed::earlyDataFrames(at,3588,3590,2)==0);
+
+    // Recorded, CRC-checked Cobra Q frames at LBA 72737, 72738 and 72739.
+    positions={{0x41,0x12,1,0,0,0,0,0x16,0x11,0x62,0xbd,0x8f},
+               {0x41,0x12,1,0,0,1,0,0x16,0x11,0x63,0x07,0xff},
+               {0x41,0x12,1,0,0,2,0,0x16,0x11,0x64,0x99,0xca}};
+    auto cobraAt=[&](int lba) { return positions.at(lba-72737); };
+    CHECK(mixed::earlyDataFrames(cobraAt,72512,72739,12)==2);
+    CHECK(mixed::earlyDataFrames(cobraAt,72737,72739,12)==0);
+    positions[1]=positions[0]; // A repeated Q frame cannot prove continuity.
+    CHECK(mixed::earlyDataFrames(cobraAt,72512,72739,12)==0);
     mixed::QFrame received{};
     int offset = 0;
     std::vector<int> queries;

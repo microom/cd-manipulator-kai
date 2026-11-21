@@ -7,6 +7,8 @@ Y.Kanechika（ごーるど）さんの CD Manipulator 2.70 Final をベースに
 - `chdman.exe` があれば、吸い出した IMG・CUE から CHD も生成可能。
 - 読み取り中の進捗、トラック番号、経過時間を表示。
 
+各バージョンの変更は [更新履歴](CHANGELOG.md) を参照してください。
+
 ## 使い方
 
 ### CHDも生成する

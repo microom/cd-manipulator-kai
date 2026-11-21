@@ -164,13 +164,16 @@ public:
     bool changed() const { return mediumChanged; }
     mixed::AudioGap probeEarlyDataPrefix(int first,int start,int at,int end,int nextEnd,int track,
                                         const std::vector<BYTE>& decoded) {
-        mixed::QFrame before,anchor;
-        memcpy(before.data(),&decoded[(end-1-start)*16],before.size());
-        memcpy(anchor.data(),&decoded[(end-start)*16],anchor.size());
-        if (!mixed::indexOneFrameEarly(before,anchor,end,track+1)) return {};
-
+        const auto frameAt=[&](int lba) {
+            mixed::QFrame frame;
+            memcpy(frame.data(),&decoded[(lba-start)*16],frame.size());
+            return frame;
+        };
+        const int prefixSize=mixed::earlyDataFrames(frameAt,at,end,track+1);
+        if (!prefixSize) return {};
+        const int prefixStart=end-prefixSize;
         const int evidenceStart=at-1;
-        const int count=end-evidenceStart; // Last frame is the verified early INDEX 01.
+        const int count=prefixStart-evidenceStart+1; // Include the first verified INDEX 01.
         std::vector<mixed::QFrame> evidence(count), frames(count), previous;
         for (int i=0;i<count;++i)
             memcpy(frames[i].data(),&decoded[(evidenceStart+i-start)*16],frames[i].size());
@@ -192,15 +195,19 @@ public:
         mixed::AudioGap gap;
         if (stopped() || !mixed::streamConfirmsGap(evidence,at,track,&gap.firstData)) return {};
         const int inside=(std::min)(end+75,nextEnd-1);
-        if (!readDataPrefix(end-1,inside,gap.dataPrefix)) return {};
+        gap.dataPrefix.resize(prefixSize);
+        for (int i=0;i<prefixSize;++i) {
+            auto& sector=gap.dataPrefix[i];
+            if (!readDataPrefix(prefixStart+i,inside,sector) || sector[15]!=gap.dataPrefix.front()[15])
+                return {};
+        }
         gap.frames=end-at;
-        gap.hasDataPrefix=true;
         repositionAt=end;
         repositionInside=inside;
-        repositionMethod=gap.dataPrefix[15]==1 ? Mode1 : Mode2;
+        repositionMethod=gap.dataPrefix.front()[15]==1 ? Mode1 : Mode2;
         CString line;
-        line.Format("Track %02d: SubQ verifies INDEX 00 LBA [%d,%d), preserving data LBA %d before TOC LBA %d (%d Q repairs)",
-                    track+1,at,end-1,end-1,end,repairs);
+        line.Format("Track %02d: SubQ verifies INDEX 00 LBA [%d,%d), preserving data LBA [%d,%d) before TOC (%d Q repairs)",
+                    track+1,at,prefixStart,prefixStart,end,repairs);
         worker.m_LogWnd->AddMessage(LOG_INFO,line);
         return gap;
     }

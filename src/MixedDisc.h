@@ -20,8 +20,7 @@ struct Track {
 struct AudioGap {
     int frames = 0;     // From the start of INDEX 00 through the TOC boundary
     int firstData = -1; // First data-flagged LBA in the verified INDEX 00
-    bool hasDataPrefix = false;
-    Sector dataPrefix{};
+    std::vector<Sector> dataPrefix; // Verified INDEX 01 sectors before the TOC address
 };
 
 inline bool msf(const std::string& s, int& frames) {
@@ -262,9 +261,20 @@ inline bool streamConfirmsGap(const std::vector<QFrame>& frames,int failed,int t
     return true;
 }
 
-inline bool indexOneFrameEarly(const QFrame& before,const QFrame& at,int toc,int track) {
-    return position(before.data(),toc-1,track,1,true) && relativeTime(before)==0 &&
-           position(at.data(),toc,track,1,true) && relativeTime(at)==1;
+// The TOC can lag the first INDEX 01 frame. Require the exact address
+// and a continuous INDEX 01 counter through the TOC before keeping a prefix.
+template<class Frame>
+int earlyDataFrames(Frame&& frameAt,int gapStart,int toc,int track) {
+    const auto anchor=frameAt(toc);
+    if (!position(anchor.data(),toc,track,1,true)) return 0;
+    const int count=relativeTime(anchor);
+    if (count<=0 || count>=toc-gapStart) return 0;
+    const int first=toc-count;
+    for (int lba=first;lba<toc;++lba) {
+        const auto frame=frameAt(lba);
+        if (!position(frame.data(),lba,track,1,true) || relativeTime(frame)!=lba-first) return 0;
+    }
+    return count;
 }
 
 inline bool mergeGapFrames(std::vector<QFrame>& evidence,const std::vector<QFrame>& frames,
@@ -384,7 +394,8 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
         }
         if (next && (hasReference || streamed) && next->omitted) {
             int at = end;
-            const int gapEnd=next->start-(audioGap.hasDataPrefix ? 1 : 0);
+            const int prefixSize=int(audioGap.dataPrefix.size());
+            const int gapEnd=next->start-prefixSize;
             if (audioToData && recoverAudioTail) {
                 const int audioEnd=streamed ? audioGap.firstData : gapEnd;
                 if (audioEnd<end || audioEnd>gapEnd) return io.fail(i+1,end,"invalid audio/data boundary");
@@ -409,11 +420,13 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
             }
             next->omitted=gapEnd-at;
             if (next->omitted) io.gap(i+2,at,gapEnd,hasReference);
-            if (audioGap.hasDataPrefix) {
-                if (!io.write(audioGap.dataPrefix)) return io.fail(i+2,gapEnd,"data prefix write failed");
+            for (int prefix=0;prefix<prefixSize;++prefix) {
+                if (io.stopped()) return false;
+                if (!io.write(audioGap.dataPrefix[prefix]))
+                    return io.fail(i+2,gapEnd+prefix,"data prefix write failed");
                 ++written;
-                next->storedGap=1;
             }
+            if (prefixSize) next->storedGap=prefixSize;
         }
         if (next && !hasReference && !streamed && !next->omitted && !io.stopped()) {
             auto query = [&](int at,int tr,int idx,bool data){ return io.q(at,tr,idx,data); };
