@@ -60,6 +60,8 @@ class MixedIO {
     CString qDetail;
     bool mediumChanged = false;
     bool mode1ReadError = false;
+    bool audioBoundaryReadError = false;
+    bool audioBoundaryQError = false;
     enum { Audio, Raw, Mode1, Mode2 };
     static constexpr int types[] = {1,0,2,3};
     static constexpr int fields[] = {0x10,0xf8,0xb8,0xf8};
@@ -316,6 +318,7 @@ public:
     }
     bool read(int lba,int mode,int end,mixed::Sector& out) {
         mode1ReadError=false;
+        audioBoundaryReadError=false;
         if (fromBatch(lba,out)) return true;
         buffered=0;
         // Read the optional final MODE1 sector separately so its failure
@@ -361,18 +364,32 @@ public:
                 return true;
             }
             const unsigned method=1u<<choice;
-            if (mode==1 && (method & mode1Methods) &&
-                (cmd.SenseArea[2]&15)==3 && cmd.SenseArea[12]==0x11) {
-                mode1ReadError=true;
+            if (mode==1 && (cmd.SenseArea[2]&15)==3 && cmd.SenseArea[12]==0x11) {
+                if (method & mode1Methods) mode1ReadError=true;
                 if (cmd.SenseArea[13]==0x05) uncorrectable|=method;
             }
             CString msg;
             msg.Format("READ CD LBA %d type %d fields %02X: failed or short; sense %02X/%02X/%02X",
                 lba,types[choice],fields[choice],cmd.SenseArea[2]&15,cmd.SenseArea[12],cmd.SenseArea[13]);
             worker.m_LogWnd->AddMessage(LOG_WARNING,msg);
-            if (readingLast && uncorrectable==mode1Methods) break;
+            if (readingLast && (uncorrectable & mode1Methods)==mode1Methods) break;
         }
+        const unsigned boundaryMethods=mode1Methods|(1u<<Audio);
+        audioBoundaryReadError=(uncorrectable & boundaryMethods)==boundaryMethods;
         return false;
+    }
+    bool audioPregapReadError() const { return audioBoundaryReadError; }
+    bool audioPregapQError() const { return audioBoundaryQError; }
+    void filledAudioPregap(int track,int lba) {
+        if (!qDetail.IsEmpty()) worker.m_LogWnd->AddMessage(LOG_WARNING,qDetail);
+        CString line;
+        line.Format("Track %02d INDEX 00 LBA %d: zero-filled 1 sector; preserved the remaining %d audio sectors.",
+                    track,lba,mixed::audioPregapFrames-1);
+        worker.m_LogWnd->AddMessage(LOG_WARNING,line);
+        const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
+        dlg.m_CompletionDetail=CString(japanese
+            ? L"\u97f3\u58f0\u30d7\u30ea\u30ae\u30e3\u30c3\u30d7\u306e\u5148\u982d1\u30bb\u30af\u30bf\u30920\u3067\u88dc\u5b8c\u3057\u307e\u3057\u305f\u3002"
+            : L"The first audio pregap sector was zero-filled.");
     }
     bool zeroFillFinalSector(int track,int lba,mixed::Sector& out) {
         if (stopped() || !theSetting.m_ZeroFillFinalSector || !mode1ReadError) return false;
@@ -381,7 +398,8 @@ public:
         line.Format("Track %02d LBA %d: unreadable final MODE1 sector replaced with 2352 zero bytes.",track,lba);
         worker.m_LogWnd->AddMessage(LOG_WARNING,line);
         const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
-        dlg.m_CompletionDetail=CString(japanese
+        if (!dlg.m_CompletionDetail.IsEmpty()) dlg.m_CompletionDetail+=L"\r\n";
+        dlg.m_CompletionDetail+=CString(japanese
             ? L"\u8aad\u3081\u306a\u3044\u6700\u7d42\u30bb\u30af\u30bf\u30920\u3067\u88dc\u5b8c\u3057\u307e\u3057\u305f\u3002"
             : L"The unreadable final sector was zero-filled.");
         return true;
@@ -396,6 +414,8 @@ public:
         struct Format { int fields,sub; const char* name; };
         static const Format formats[] = {{0,2,"Q16"},{0,1,"PW96"},{0xf8,1,"raw+PW96"},{0xf8,2,"raw+Q16"}};
         qDetail.Format("SubQ LBA %d expected T%02d INDEX %02d (%s):",lba,track,index,data ? "data" : "audio");
+        audioBoundaryQError=false;
+        bool received=false;
         BYTE reply[2352+96];
         for (int attempt=0; attempt<4; ++attempt) {
             if (stopped()) return false;
@@ -407,11 +427,14 @@ public:
                 SRB_ExecSCSICmd cmd;
                 CString detail;
                 if (!command(at,0,fmt.fields,fmt.sub,reply,mainBytes+(fmt.sub==1 ? 96 : 16),cmd)) {
+                    if (at==lba && (cmd.SenseArea[2]&15)==3 && cmd.SenseArea[12]==0x11 && cmd.SenseArea[13]==0x05)
+                        audioBoundaryQError=true;
                     detail.Format(" %s@%d failed/short sense %02X/%02X/%02X",fmt.name,at,
                         cmd.SenseArea[2]&15,cmd.SenseArea[12],cmd.SenseArea[13]);
                     qDetail += detail;
                     return false;
                 }
+                received=true;
                 if (fmt.sub==1) frame = mixed::unpackQ(reply+mainBytes);
                 else memcpy(frame.data(),reply+mainBytes,frame.size());
                 detail.Format(" %s@%d [%02X %02X %02X abs %02X:%02X:%02X crc %02X%02X]",
@@ -422,6 +445,7 @@ public:
             int previousOffset = qOffset[method];
             auto match = mixed::matchQ(lba,track,index,data,qOffset[method],read);
             if (match!=mixed::QMatch::Unknown) {
+                audioBoundaryQError=false;
                 if (previousOffset != qOffset[method]) {
                     CString msg;
                     msg.Format("SubQ %s request offset %d verified at LBA %d",fmt.name,qOffset[method],lba);
@@ -436,6 +460,7 @@ public:
                 return match!=mixed::QMatch::Different;
             }
         }
+        audioBoundaryQError=audioBoundaryQError && !received;
         return false;
     }
     bool write(const mixed::Sector& s) { return image.write(s.data(),2352); }
