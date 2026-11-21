@@ -15,6 +15,7 @@ file(GLOB CDM_SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 # ECCEDC.cpp is in the archive but is not part of upstream cdm.vcproj.
 list(REMOVE_ITEM CDM_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/ECCEDC.cpp")
 add_executable(CdManipulator WIN32 ${CDM_SOURCES} src/cdm.rc)
+set_target_properties(CdManipulator PROPERTIES OUTPUT_NAME CdManipulatorKai)
 option(CDM_SKIP_AUDIO_TAIL "Skip additional CD-DA reads in confirmed pregaps" ON)
 if(CDM_SKIP_AUDIO_TAIL)
     target_compile_definitions(CdManipulator PRIVATE CDM_SKIP_AUDIO_TAIL)
