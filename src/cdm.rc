@@ -65,7 +65,7 @@ END
 
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
-IDR_MAINFRAME           ICON                    "res\\cdm.ico"
+IDR_MAINFRAME           ICON                    "res\\cdm-kai.ico"
 IDR_TOCFRAME            ICON                    "res\\idr_main.ico"
 IDI_ICON1               ICON                    "res\\icon1.ico"
 
@@ -1053,9 +1053,9 @@ BEGIN
         BEGIN
             VALUE "FileDescription", CDM_PRODUCT_NAME
             VALUE "FileVersion", APP_VERSION
-            VALUE "InternalName", "CdManipulator"
+            VALUE "InternalName", "CdManipulatorKai"
             VALUE "LegalCopyright", "Copyright (C) 2002-2004 Y.Kanechika"
-            VALUE "OriginalFilename", "CdManipulator.exe"
+            VALUE "OriginalFilename", "CdManipulatorKai.exe"
             VALUE "ProductName", CDM_PRODUCT_NAME
             VALUE "ProductVersion", APP_VERSION
         END

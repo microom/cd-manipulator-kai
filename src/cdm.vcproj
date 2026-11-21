@@ -34,7 +34,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="htmlhelp.lib winmm.lib"
-				OutputFile="$(OutDir)/$CdManipulator.exe"
+				OutputFile="$(OutDir)/CdManipulatorKai.exe"
 				LinkIncremental="2"
 				AddModuleNamesToAssembly=""
 				GenerateDebugInformation="TRUE"
@@ -93,7 +93,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalOptions="htmlhelp.lib winmm.lib"
-				OutputFile="$(OutDir)/CdManipulator.exe"
+				OutputFile="$(OutDir)/CdManipulatorKai.exe"
 				LinkIncremental="1"
 				IgnoreDefaultLibraryNames=""
 				AddModuleNamesToAssembly=""
@@ -519,7 +519,7 @@
 				RelativePath="res\button1.bmp">
 			</File>
 			<File
-				RelativePath="res\cdm.ico">
+				RelativePath="res\cdm-kai.ico">
 			</File>
 			<File
 				RelativePath="res\cdm.manifest">
