@@ -49,16 +49,18 @@ ctest --test-dir build -C Release --output-on-failure
 
 ## 配布用ZIPを作る
 
-7-ZipとPython 3.10以降を用意します。`dist` にKaiの実行ファイルと同梱用言語ファイル・ヘルプを揃えます。MAMEの公式パッケージを2つ入手します。[Windows x64バイナリ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) · [対応ソース](https://github.com/mamedev/mame/releases/download/mame0287/mame0287s.exe)
+7-ZipとPython 3.10以降を用意します。`dist` にKaiの実行ファイルと同梱用言語ファイル・ヘルプを揃えます。[MAME 0.287公式Windows x64バイナリ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) を入手します。
 
 ```powershell
-python tools/package-release.py --kai-dir dist --mame-bin mame0287b_x64.exe --mame-source mame0287s.exe --out build/release
+python tools/package-release.py --kai-dir dist --mame-bin mame0287b_x64.exe --out build/release
 ```
 
-生成された実行用ZIPと `MAME-0.287-source.7z` を同じGitHub Releaseに添付します。
+実行用ZIPをGitHub Releaseに添付し、公開済みの対応ソースへの直リンクをリリース説明にも載せます。対応ソースのアーカイブを作るときは、[MAMEの公式ソースパッケージ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287s.exe) を入手し、`--mame-source mame0287s.exe` を指定します。
 
 ## 出典とライセンス
 
 Kaiの元の配布元は [物置部屋。の CD Manipulator](http://www.storeroom.info/cdm/) です。Kai本体の著作権表示、非商用条件を含む再配布条件、免責事項は [cdm-license.txt](src/cdm-license.txt) を参照してください。
 
-同梱の `chdman.exe` は、MAME 0.287公式Windows x64版の実行ファイルです。CHD生成時に独立したプログラムとして動作し、MAMEのライセンス条件に従って配布します。著作権表示とライセンス全文はZIP内の `licenses/mame/COPYING` と `licenses/mame/docs/legal/` にあります。対応ソースは同じReleaseから取得できます。[MAMEのライセンス情報](https://docs.mamedev.org/license.html)
+同梱の `chdman.exe` は、MAME 0.287公式Windows x64版の実行ファイルです。CHD生成時に独立したプログラムとして動作し、MAMEのライセンス条件に従って配布します。著作権表示とライセンス全文はZIP内の `licenses/mame/COPYING` と `licenses/mame/docs/legal/` にあります。[MAMEのライセンス情報](https://docs.mamedev.org/license.html)
+
+対応ソースはKaiの `v2.70-kai.8` で公開しています。[MAME 0.287 対応ソース（.7z）](https://github.com/microom/cd-manipulator-kai/releases/download/v2.70-kai.8/MAME-0.287-source.7z)

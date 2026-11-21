@@ -68,11 +68,11 @@ def extract_source_archive(source, output):
 
 def package(args):
     verify_hash(args.mame_bin, MAME_ARCHIVES["binary"])
-    verify_hash(args.mame_source, MAME_ARCHIVES["source"])
+    if args.mame_source is not None:
+        verify_hash(args.mame_source, MAME_ARCHIVES["source"])
     header = (ROOT / "src/CDMVersion.h").read_text(encoding="ascii")
     version = re.search(r'^#define APP_VERSION "([^"]+)"$', header, re.MULTILINE).group(1)
     zip_name = f"CD-Manipulator-Kai-{version}-windows-x64.zip"
-    source_name = f"MAME-{MAME_VERSION}-source.7z"
 
     args.out.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix="package-", dir=args.out) as folder:
@@ -102,12 +102,16 @@ def package(args):
             archive.writestr("README.md", readme.replace(b"(src/cdm-license.txt)", b"(cdm-license.txt)"))
             archive.write(ROOT / "CHANGELOG.md", "CHANGELOG.md")
 
-        extract_source_archive(args.mame_source, stage / source_name)
         with ZipFile(stage / zip_name) as archive:
             corrupt = archive.testzip()
             if corrupt is not None:
                 raise ValueError(f"Archive integrity check failed for {corrupt}")
-        for name in (zip_name, source_name):
+        outputs = [zip_name]
+        if args.mame_source is not None:
+            source_name = f"MAME-{MAME_VERSION}-source.7z"
+            extract_source_archive(args.mame_source, stage / source_name)
+            outputs.append(source_name)
+        for name in outputs:
             output = args.out / name
             os.replace(stage / name, output)
             print(f"{file_sha256(output)}  {output}")
@@ -118,7 +122,7 @@ def main():
     parser = ArgumentParser(description=__doc__)
     parser.add_argument("--kai-dir", required=True, type=Path, help="Kai runtime files")
     parser.add_argument("--mame-bin", required=True, type=Path, help="official mame0287b_x64.exe")
-    parser.add_argument("--mame-source", required=True, type=Path, help="official mame0287s.exe")
+    parser.add_argument("--mame-source", type=Path, help="also create a source archive from official mame0287s.exe")
     parser.add_argument("--out", required=True, type=Path, help="release output directory")
     parser.add_argument("--seven-zip", default=str(default_7z) if default_7z.is_file() else "7z")
     package(parser.parse_args())
