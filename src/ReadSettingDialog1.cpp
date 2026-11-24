@@ -175,12 +175,6 @@ BOOL CReadSettingDialog1::OnInitDialog()
 	m_AudioMethod.AddString("READ D5");
 	UpdateData(FALSE);
 	SetLanguage();
-	if(theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")!=0){
-		SetDlgItemText(IDC_REDUMP_RETRY,"Retry mismatched audio against DB");
-		SetDlgItemText(IDC_CREATE_CHD,"Also create CHD");
-		SetDlgItemText(IDC_DELETE_CHD_SOURCE,"Delete IMG/CUE after CHD");
-		SetDlgItemText(IDC_ZERO_FILL_FINAL,"Zero-fill unreadable final sector");
-	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
 	// 例外 : OCX プロパティ ページは必ず FALSE を返します。
@@ -258,4 +252,9 @@ void CReadSettingDialog1::SetLanguage(void)
 	for(i=0;i<11;i++){
 		this->SetDlgItemText(CtrlStr[i][0],STR(CtrlStr[i][1]));
 	}
+	const auto& lang=theSetting.m_Lang;
+	SetDlgItemText(IDC_REDUMP_RETRY,lang.Kai(KaiText::AutoCorrectAudio));
+	SetDlgItemText(IDC_CREATE_CHD,lang.Kai(KaiText::CreateChd));
+	SetDlgItemText(IDC_DELETE_CHD_SOURCE,lang.Kai(KaiText::DeleteChdSource));
+	SetDlgItemText(IDC_ZERO_FILL_FINAL,lang.Kai(KaiText::ZeroFillFinal));
 }

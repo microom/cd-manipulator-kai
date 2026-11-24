@@ -23,6 +23,8 @@ CHDMAN_SHA256 = "e475e5422e17557f38ec8e430e001cf566f377fed353d43c33a9fd8ce70c729
 RUNTIME_FILES = (
     "CdManipulatorKai.exe",
     "CdManipulator.chm",
+)
+LANGUAGE_FILES = (
     "Japanese.cml",
     "English.cml",
     "copier.cml",
@@ -91,6 +93,8 @@ def package(args):
         with ZipFile(stage / zip_name, "w", ZIP_DEFLATED, compresslevel=9) as archive:
             for name in RUNTIME_FILES:
                 archive.write(args.kai_dir / name, name)
+            for name in LANGUAGE_FILES:
+                archive.write(ROOT / "languages" / name, name)
             archive.write(ROOT / "src/cdm-license.txt", "cdm-license.txt")
             archive.write(mame / "chdman.exe", "chdman.exe")
             archive.write(mame / "COPYING", "licenses/mame/COPYING")

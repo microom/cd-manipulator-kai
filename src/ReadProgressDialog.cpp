@@ -204,9 +204,8 @@ bool CReadProgressDialog::GetSuccessFlag(void)
 void CReadProgressDialog::UpdateElapsedTime()
 {
 	const DWORD seconds=(GetTickCount()-m_ReadStarted)/1000;
-	const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
 	CString elapsed;
-	elapsed.Format(japanese ? "Œo‰ß %02lu:%02lu:%02lu" : "Elapsed %02lu:%02lu:%02lu",
+	elapsed.Format("%s %02lu:%02lu:%02lu",theSetting.m_Lang.Kai(KaiText::Elapsed).GetString(),
 	               seconds/3600,(seconds/60)%60,seconds%60);
 	SetDlgItemText(IDC_READ_ELAPSED,elapsed);
 }

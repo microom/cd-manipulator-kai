@@ -178,13 +178,9 @@ BOOL CReadSettingDialog::OnInitDialog()
 	m_CurrentEngine = 0;
 	m_Page1.Load();
 
-	CString automatic;
-	if(!m_SettingAtCopy && theSetting.m_UseSPTI){
-		const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
-		if(japanese) automatic="自動（シングルセッション）";
-		else automatic.Format("Auto (%s)",STR(5));
-	}
-	m_EngineList.InsertString(0,automatic.IsEmpty() ? STR(5) : automatic);
+	const auto& lang=theSetting.m_Lang;
+	const bool autoRead=!m_SettingAtCopy && theSetting.m_UseSPTI;
+	m_EngineList.InsertString(0,autoRead ? lang.Kai(KaiText::AutoRead) : STR(5));
 	m_EngineList.InsertString(1,STR(6));
 #if ALPHA_MODE
 	m_EngineList.InsertString(2,STR(19));
@@ -194,9 +190,9 @@ BOOL CReadSettingDialog::OnInitDialog()
 	if(!m_SettingAtCopy){
 		m_EngineList.InsertString(3,STR(18));
 #ifdef CDM_SKIP_AUDIO_TAIL
-        if(theSetting.m_UseSPTI) m_EngineList.InsertString(MixedEngine,"混在CD（追加読み取りなし）");
+        if(theSetting.m_UseSPTI) m_EngineList.InsertString(MixedEngine,lang.Kai(KaiText::MixedSkipTail));
 #else
-        if(theSetting.m_UseSPTI) m_EngineList.InsertString(MixedEngine,"混在CD（音声末尾を保存）");
+        if(theSetting.m_UseSPTI) m_EngineList.InsertString(MixedEngine,lang.Kai(KaiText::MixedPreserveTail));
 #endif
 	} else {
 		if(theSetting.m_ReadEngine == 3){
@@ -233,6 +229,7 @@ void CReadSettingDialog::SetLanguage(void)
 	for(i=0;i<3;i++){
 		this->SetDlgItemText(CtrlStr[i][0],STR(CtrlStr[i][1]));
 	}
+	SetDlgItemText(IDC_MIXED_REFERENCE,theSetting.m_Lang.Kai(KaiText::MixedReference));
 	SetDlgItemText(IDOK,theSetting.m_Lang.m_Str[1]);
 	SetDlgItemText(IDCANCEL,theSetting.m_Lang.m_Str[2]);
 }
@@ -280,7 +277,7 @@ void CReadSettingDialog::OnCbnSelchangeEnginelist()
 	m_CurrentEngine = m_EngineList.GetCurSel();
 	bool mixed = m_CurrentEngine == MixedEngine;
 	GetDlgItem(IDC_MIXED_REFERENCE)->ShowWindow(mixed ? SW_SHOW : SW_HIDE);
-	SetDlgItemText(IDC_ENGINE_NOTE,mixed ? "単一セッションの音声・データ混在CDを IMG＋CUE に保存します。" : "Under construction");
+	SetDlgItemText(IDC_ENGINE_NOTE,mixed ? theSetting.m_Lang.Kai(KaiText::MixedNote).GetString() : "Under construction");
 	GetDlgItem(IDC_ENGINE_NOTE)->ShowWindow(mixed || m_CurrentEngine == 2 ? SW_SHOW : SW_HIDE);
 
 	switch(m_CurrentEngine){

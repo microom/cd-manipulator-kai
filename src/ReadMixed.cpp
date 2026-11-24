@@ -386,10 +386,7 @@ public:
         line.Format("Track %02d INDEX 00 LBA %d: zero-filled 1 sector; preserved the remaining %d audio sectors.",
                     track,lba,mixed::audioPregapFrames-1);
         worker.m_LogWnd->AddMessage(LOG_WARNING,line);
-        const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
-        dlg.m_CompletionDetail=CString(japanese
-            ? L"\u97f3\u58f0\u30d7\u30ea\u30ae\u30e3\u30c3\u30d7\u306e\u5148\u982d1\u30bb\u30af\u30bf\u30920\u3067\u88dc\u5b8c\u3057\u307e\u3057\u305f\u3002"
-            : L"The first audio pregap sector was zero-filled.");
+        dlg.m_CompletionDetail=theSetting.m_Lang.Kai(KaiText::AudioPregapFilled);
     }
     bool zeroFillFinalSector(int track,int lba,mixed::Sector& out) {
         if (stopped() || !theSetting.m_ZeroFillFinalSector || !mode1ReadError) return false;
@@ -397,11 +394,8 @@ public:
         CString line;
         line.Format("Track %02d LBA %d: unreadable final MODE1 sector replaced with 2352 zero bytes.",track,lba);
         worker.m_LogWnd->AddMessage(LOG_WARNING,line);
-        const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
         if (!dlg.m_CompletionDetail.IsEmpty()) dlg.m_CompletionDetail+=L"\r\n";
-        dlg.m_CompletionDetail+=CString(japanese
-            ? L"\u8aad\u3081\u306a\u3044\u6700\u7d42\u30bb\u30af\u30bf\u30920\u3067\u88dc\u5b8c\u3057\u307e\u3057\u305f\u3002"
-            : L"The unreadable final sector was zero-filled.");
+        dlg.m_CompletionDetail+=theSetting.m_Lang.Kai(KaiText::FinalSectorFilled);
         return true;
     }
     void reportBatches() {

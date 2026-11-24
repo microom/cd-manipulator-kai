@@ -45,11 +45,11 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-`build/Release/CdManipulatorKai.exe` と同じフォルダに、元の配布ZIPに入っている `.cml` 言語ファイルを置きます。ヘルプを使う場合は `CdManipulator.chm` も置きます。
+ビルド時に `languages/` の3種類の `.cml` がEXEと同じフォルダーにコピーされます。Kaiで追加した表示は `#Kai.` で始まる項目を編集できます。追加項目のない旧辞書を選んだ場合、その項目は内蔵の英語表記になります。ヘルプを使う場合は `CdManipulator.chm` も置きます。
 
 ## 配布用ZIPを作る
 
-7-ZipとPython 3.10以降を用意します。`dist` にKaiの実行ファイルと同梱用言語ファイル・ヘルプを揃えます。[MAME 0.287公式Windows x64バイナリ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) を入手します。
+7-ZipとPython 3.10以降を用意し、`dist` にKaiの実行ファイルとヘルプを揃えます。言語ファイルは `languages/` から同梱します。[MAME 0.287公式Windows x64バイナリ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) を入手します。
 
 ```powershell
 python tools/package-release.py --kai-dir dist --mame-bin mame0287b_x64.exe --out build/release
