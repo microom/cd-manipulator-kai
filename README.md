@@ -27,7 +27,11 @@ Y.Kanechika（ごーるど）さんの CD Manipulator 2.70 Final をベースに
 
 ### 混在CDの最終セクタ
 
-「読めない最終セクタを0補完する」は初期値がオンです。混在CDでディスク末尾のMODE1データセクタ1つが読み取りエラーになった場合、2352バイトのゼロで補完して保存します。最終セクタは単独で読み、データ用の2方式がともに訂正不能を報告したら補完に進みます。補完した位置はログに記録します。ディスクから読めたデータだけを保存したいときは、この設定をオフにします。
+「読めない最終セクタを0補完する」は初期値がオンです。混在CDでディスク末尾のMODE1データセクタ1つが読み取りエラーになった場合、2352バイトのゼロで補完して保存します。最終セクタは単独で読み、データ用の2方式がともに訂正不能を報告したら補完に進みます。補完した位置はログに記録します。この設定をオフにすると、ディスク末尾での0補完を無効にできます。
+
+### PCE-CDの音声プリギャップ
+
+自動読み取りでは、MODE1データから音声へ切り替わる150セクタのプリギャップを対象に、先頭1セクタだけが訂正不能だった時に限って0補完します。直前のデータセクタと後続の音声位置を確認し、後続149セクタを全部読み取れた場合に、補完した1セクタとともにIMGに保存します。CUEには保存済みの `INDEX 00` を記録します。補完した位置はログに、補完したことは完了画面に出ます。
 
 「不一致の音声を自動補正」は休止中です。高度な設定ではグレー表示になります。
 
@@ -41,20 +45,29 @@ cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-`build/Release/CdManipulatorKai.exe` と同じフォルダに、元の配布ZIPに入っている `.cml` 言語ファイルを置きます。ヘルプを使う場合は `CdManipulator.chm` も置きます。
+ビルド時に `languages/` の3種類の `.cml` がEXEと同じフォルダーにコピーされます。Kaiで追加した表示は `#Kai.` で始まる項目を編集できます。追加項目のない旧辞書を選んだ場合、その項目は内蔵の英語表記になります。ヘルプを使う場合は `CdManipulator.chm` も置きます。
 
 ## 配布用ZIPを作る
 
-7-ZipとPython 3.10以降を用意します。`dist` にKaiの実行ファイルと同梱用言語ファイル・ヘルプを揃えます。MAMEの公式パッケージを2つ入手します。[Windows x64バイナリ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) · [対応ソース](https://github.com/mamedev/mame/releases/download/mame0287/mame0287s.exe)
+7-ZipとPython 3.10以降を用意し、`dist` にKaiの実行ファイルとヘルプを揃えます。言語ファイルは `languages/` から同梱します。[MAME 0.287公式Windows x64バイナリ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287b_x64.exe) を入手します。
 
 ```powershell
-python tools/package-release.py --kai-dir dist --mame-bin mame0287b_x64.exe --mame-source mame0287s.exe --out build/release
+python tools/package-release.py --kai-dir dist --mame-bin mame0287b_x64.exe --out build/release
 ```
 
-生成された実行用ZIPと `MAME-0.287-source.7z` を同じGitHub Releaseに添付します。
+## リリースの手順
+
+1. `src/CDMVersion.h` のバージョン表記と [更新履歴](CHANGELOG.md) を揃えます。
+2. 配布用ZIPを作り、ビルドとテストの結果、ZIPに入っているEXEのバージョン、言語ファイル、ライセンス文書を確認します。
+3. リリースの差分をPRで `main` に統合します。検証済みのコミットが `main` に含まれることを確認してから、そのコミットにリリースタグを付けます。
+4. 更新履歴と対応するリリース説明を用意し、確認した実行用ZIPを添付してGitHub Releaseを公開します。chdmanが前回と同じ場合、対応ソースは公開済みのファイルへの直リンクをリリース説明とZIP内のREADMEに載せます。
+
+対応ソースのアーカイブを作るときは、[MAMEの公式ソースパッケージ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287s.exe) を入手し、`--mame-source mame0287s.exe` を指定します。
 
 ## 出典とライセンス
 
 Kaiの元の配布元は [物置部屋。の CD Manipulator](http://www.storeroom.info/cdm/) です。Kai本体の著作権表示、非商用条件を含む再配布条件、免責事項は [cdm-license.txt](src/cdm-license.txt) を参照してください。
 
-同梱の `chdman.exe` は、MAME 0.287公式Windows x64版の実行ファイルです。CHD生成時に独立したプログラムとして動作し、MAMEのライセンス条件に従って配布します。著作権表示とライセンス全文はZIP内の `licenses/mame/COPYING` と `licenses/mame/docs/legal/` にあります。対応ソースは同じReleaseから取得できます。[MAMEのライセンス情報](https://docs.mamedev.org/license.html)
+同梱の `chdman.exe` は、MAME 0.287公式Windows x64版の実行ファイルです。CHD生成時に独立したプログラムとして動作し、MAMEのライセンス条件に従って配布します。著作権表示とライセンス全文はZIP内の `licenses/mame/COPYING` と `licenses/mame/docs/legal/` にあります。[MAMEのライセンス情報](https://docs.mamedev.org/license.html)
+
+対応ソースはKaiの `v2.70-kai.8` で公開しています。[MAME 0.287 対応ソース（.7z）](https://github.com/microom/cd-manipulator-kai/releases/download/v2.70-kai.8/MAME-0.287-source.7z)

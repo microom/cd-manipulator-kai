@@ -11,6 +11,7 @@
 namespace mixed {
 using Sector = std::array<unsigned char, 2352>;
 constexpr int maxVerifiedGap = 1500;
+constexpr int audioPregapFrames = 150;
 struct Track {
     int start;          // Drive LBA of INDEX 01
     int mode;           // 0 audio, -1 data (mode unknown), 1 or 2 data
@@ -92,6 +93,14 @@ inline bool dataHeader(const Sector& s, int lba) {
     return rawDataHeader(s) && address(s.data()+12,lba);
 }
 
+inline bool pceBootSector(const Sector& sector,int lba,int trackStart,bool firstTrack) {
+    const bool retail=lba==trackStart+1;
+    if (!retail && !(firstTrack && lba==trackStart+16)) return false;
+    const std::string marker=retail ? "PC Engine CD-ROM SYSTEM" : "HACKER CD ROM SYSTEM";
+    return dataHeader(sector,lba) && sector[15]==1 &&
+           std::equal(marker.begin(),marker.end(),sector.begin()+(retail ? 48 : 24));
+}
+
 inline bool isPceCd(std::istream& image,const std::vector<Track>& tracks,int leadout) {
     int omitted=0;
     for (size_t i=0;i<tracks.size();++i) {
@@ -100,18 +109,16 @@ inline bool isPceCd(std::istream& image,const std::vector<Track>& tracks,int lea
         if (track.mode==0) continue;
         if (track.mode!=1) return false;
         const int end=i+1<tracks.size() ? tracks[i+1].start-tracks[i+1].omitted-tracks[i+1].storedGap : leadout;
-        const auto matches=[&](int lba,int offset,const std::string& marker) {
+        const auto matches=[&](int lba) {
             if (lba>=end || lba<omitted) return false;
             Sector sector;
             image.clear();
             image.seekg(std::streamoff(lba-omitted)*sector.size());
             return image.read(reinterpret_cast<char*>(sector.data()),sector.size()) &&
-                   dataHeader(sector,lba) && sector[15]==1 &&
-                   std::equal(marker.begin(),marker.end(),sector.begin()+offset);
+                   pceBootSector(sector,lba,track.start,i==0);
         };
         // The offsets include the 16-byte raw Mode 1 header.
-        return matches(track.start+1,48,"PC Engine CD-ROM SYSTEM") ||
-               (i==0 && matches(track.start+16,24,"HACKER CD ROM SYSTEM"));
+        return matches(track.start+1) || (i==0 && matches(track.start+16));
     }
     return false;
 }
@@ -295,13 +302,15 @@ inline bool mergeGapFrames(std::vector<QFrame>& evidence,const std::vector<QFram
 
 // Check both neighbours as well. Unsupported Q formats simply give no proof.
 template<class Q>
-int verifiedGap(Q&& q, int failed, int trackNo, const Track& current, const Track& next) {
+int verifiedGap(Q&& q, int failed, int trackNo, const Track& current, const Track& next,
+                bool* confirmedAudioTail=nullptr) {
     const int end = next.start;
     const int limit = maxVerifiedGap; // bounded diagnostics (20 seconds of disc time)
     if (failed <= current.start || failed >= end || end-failed > limit ||
         !q(end, trackNo+1, 1, next.mode != 0)) return 0;
     for (int lba=end-1; lba>=current.start && end-lba<=limit+1; --lba) {
         if (q(lba, trackNo+1, 0, next.mode != 0)) continue;
+        if (confirmedAudioTail && lba==failed) *confirmedAudioTail=true;
         if (lba >= failed || !q(lba, trackNo, 1, current.mode != 0)) return 0;
         return end-lba-1;
     }
@@ -338,6 +347,7 @@ inline std::string cue(const std::string& image,const std::vector<Track>& tracks
 template<class IO>
 bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io, bool recoverAudioTail=true) {
     int written = 0;
+    bool pceDisc=false, filledAudioPregap=false;
     Sector sector;
     for (int i=0; i<int(tracks.size()); ++i) {
         Track& t = tracks[i];
@@ -345,6 +355,7 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
         int end = next ? next->start-next->omitted : leadout;
         const bool audioToData = next && t.mode == 0 && next->mode != 0;
         const bool dataToAudio = next && t.mode != 0 && next->mode == 0;
+        bool precedingMode1=false, storedAudioPregap=false;
         AudioGap audioGap;
         if (audioToData && !hasReference) {
             const int nextEnd=i+2<int(tracks.size()) ? tracks[i+2].start : leadout;
@@ -367,10 +378,32 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
                   io.zeroFillFinalSector(i+1,lba,sector))) {
                 int gap = 0;
                 auto query = [&](int at,int tr,int idx,bool data){ return io.q(at,tr,idx,data); };
+                const bool tryAudioPregap=pceDisc && dataToAudio && !hasReference && !filledAudioPregap &&
+                    !next->omitted && end-lba==audioPregapFrames && precedingMode1 && io.audioPregapReadError();
+                bool confirmedAudioTail=false;
                 if (next && !hasReference && !streamed) {
                     if (audioToData && lba>t.start && end-lba<=maxVerifiedGap &&
                         io.streamGap(t.start,lba,end,i+1)) gap=end-lba;
-                    else gap = verifiedGap(query, lba, i+1, t, *next);
+                    else gap = verifiedGap(query, lba, i+1, t, *next, tryAudioPregap ? &confirmedAudioTail : nullptr);
+                }
+                if (!gap && confirmedAudioTail && io.audioPregapQError() && !io.stopped()) {
+                    // Verify the whole readable part before writing a single replacement.
+                    std::vector<Sector> pregap(audioPregapFrames);
+                    for (int at=lba+1; at<end; ++at) {
+                        if (io.stopped()) return false;
+                        if (!io.readAudioTail(at,lba+1,end,pregap[at-lba]))
+                            return io.fail(i+2,at,"second unreadable audio pregap sector");
+                    }
+                    for (int at=lba; at<end; ++at) {
+                        if (io.stopped()) return false;
+                        if (!io.write(pregap[at-lba])) return io.fail(i+2,at,"audio pregap write failed");
+                        ++written;
+                        io.progress(at,leadout);
+                    }
+                    next->storedGap=audioPregapFrames;
+                    storedAudioPregap=filledAudioPregap=true;
+                    io.filledAudioPregap(i+2,lba);
+                    break;
                 }
                 if (!gap) return io.fail(i+1, lba, "sector read failed");
                 // verifiedGap requires every INDEX 00 frame to have the
@@ -388,6 +421,9 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
                     return io.fail(i+1,lba,"data INDEX 01 header / mode mismatch");
                 t.mode = sector[15];
             }
+            if (!pceDisc && t.mode==1) pceDisc=pceBootSector(sector,lba,t.start,i==0);
+            if (dataToAudio && end-lba==audioPregapFrames+1)
+                precedingMode1=t.mode==1 && dataHeader(sector,lba) && sector[15]==1;
             if (!io.write(sector)) return io.fail(i+1,lba,"image write failed");
             ++written;
             io.progress(lba,leadout);
@@ -428,7 +464,7 @@ bool acquire(std::vector<Track>& tracks, int leadout, bool hasReference, IO& io,
             }
             if (prefixSize) next->storedGap=prefixSize;
         }
-        if (next && !hasReference && !streamed && !next->omitted && !io.stopped()) {
+        if (next && !hasReference && !streamed && !next->omitted && !storedAudioPregap && !io.stopped()) {
             auto query = [&](int at,int tr,int idx,bool data){ return io.q(at,tr,idx,data); };
             next->storedGap = verifiedGap(query, end-1, i+1, t, *next);
         }

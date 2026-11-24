@@ -147,8 +147,8 @@ ChdResult ConvertCue(const CStringW& executable, const CStringW& cue, const CStr
 void CReadThread::CreateChd()
 {
     auto& dlg=*static_cast<CReadProgressDialog*>(m_ParentWnd);
-    const bool japanese=theSetting.m_LangFile.Right(12).CompareNoCase("Japanese.cml")==0;
-    dlg.m_Message=CString(japanese ? L"CHD \u3092\u751f\u6210\u4e2d..." : L"Creating CHD...");
+    const auto& lang=theSetting.m_Lang;
+    dlg.m_Message=lang.Kai(KaiText::ChdCreating);
     dlg.PostMessage(WM_COMMAND,ID_UPDATE_DIALOG);
     m_LogWnd->AddMessage(LOG_INFO,dlg.m_Message);
 
@@ -169,11 +169,11 @@ void CReadThread::CreateChd()
         }
     }
 
-    CStringW message;
+    CString message;
     int severity=LOG_WARNING;
     switch (result) {
     case ChdResult::Saved:
-        message=japanese ? L"CHD \u3092\u4fdd\u5b58\u3057\u307e\u3057\u305f\u3002" : L"CHD saved.";
+        message=lang.Kai(KaiText::ChdSaved);
         severity=LOG_NORMAL;
         if (!m_ChdCueText.empty())
             m_LogWnd->AddMessage(LOG_INFO,"PCE-CD CUE compatibility: skipped INDEX 00 on tracks with explicit PREGAP for CHD conversion.");
@@ -182,31 +182,26 @@ void CReadThread::CreateChd()
             // verified copy, sourceCue refers to the pair in that folder.
             const CStringW image=sourceCue.Left(sourceCue.GetLength()-4)+L".img";
             if (DeleteFileW(image) && DeleteFileW(sourceCue)) {
-                message+=japanese ? L"\n\u5909\u63db\u5143\u306eIMG/CUE\u3092\u524a\u9664\u3057\u307e\u3057\u305f\u3002"
-                                  : L"\nSource IMG/CUE deleted.";
+                message+="\n"+lang.Kai(KaiText::ChdSourceDeleted);
             } else {
                 severity=LOG_WARNING;
-                message+=japanese ? L"\n\u524a\u9664\u3067\u304d\u306a\u304b\u3063\u305fIMG/CUE\u304c\u3042\u308a\u307e\u3059\u3002"
-                                  : L"\nSome source files could not be deleted.";
+                message+="\n"+lang.Kai(KaiText::ChdSourceDeleteFailed);
                 m_LogWnd->AddMessage(LOG_WARNING,CString(sourceCue));
             }
         }
         break;
     case ChdResult::Skipped:
-        message=japanese ? L"\u540c\u540d\u306e CHD \u304c\u65e2\u306b\u3042\u308a\u307e\u3059\u3002"
-                         : L"A CHD with this name already exists.";
+        message=lang.Kai(KaiText::ChdExists);
         break;
     case ChdResult::Cancelled:
-        message=japanese ? L"CHD \u306e\u751f\u6210\u3092\u4e2d\u65ad\u3057\u307e\u3057\u305f\u3002"
-                         : L"CHD creation cancelled.";
+        message=lang.Kai(KaiText::ChdCancelled);
         break;
     case ChdResult::Failed:
-        message=japanese ? L"CHD \u306e\u751f\u6210\u306b\u5931\u6557\u3057\u307e\u3057\u305f\u3002"
-                         : L"CHD creation failed.";
+        message=lang.Kai(KaiText::ChdFailed);
         break;
     }
     if (!dlg.m_CompletionDetail.IsEmpty()) dlg.m_CompletionDetail+="\n";
-    dlg.m_CompletionDetail+=CString(message);
-    if (!output.IsEmpty()) message+=L" "+output;
-    m_LogWnd->AddMessage(severity,CString(message));
+    dlg.m_CompletionDetail+=message;
+    if (!output.IsEmpty()) message+=" "+CString(output);
+    m_LogWnd->AddMessage(severity,message);
 }

@@ -134,7 +134,7 @@ BEGIN
     COMBOBOX        IDC_ENGINELIST,6,54,303,90,CBS_DROPDOWNLIST |
                     WS_VSCROLL | WS_TABSTOP
     LTEXT           "Under construction",IDC_ENGINE_NOTE,12,83,290,16
-    CONTROL         "同じディスクの既存CUEを参照する",IDC_MIXED_REFERENCE,"Button",
+    CONTROL         "",IDC_MIXED_REFERENCE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,12,107,240,14
 END
 
@@ -151,7 +151,7 @@ BEGIN
     CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER | 0x1,6,24,
                     192,18
     PUSHBUTTON      "ログ",IDC_LOG,6,48,30,18
-    CTEXT           "経過 00:00:00",IDC_READ_ELAPSED,42,48,156,18,SS_CENTERIMAGE
+    CTEXT           "",IDC_READ_ELAPSED,42,48,156,18,SS_CENTERIMAGE
     CTEXT           "x1.0",IDC_MULTI,204,6,36,12,SS_CENTERIMAGE,
                     WS_EX_STATICEDGE
 END
@@ -567,13 +567,13 @@ BEGIN
                     WS_TABSTOP
     CONTROL         "高度な設定",IDC_EXTMENU,"Button",BS_AUTOCHECKBOX | 
                     WS_TABSTOP,6,24,138,8
-    CONTROL         "不一致の音声を自動補正",IDC_REDUMP_RETRY,"Button",
+    CONTROL         "",IDC_REDUMP_RETRY,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,6,36,138,8
-    CONTROL         "CHDも生成する",IDC_CREATE_CHD,"Button",
+    CONTROL         "",IDC_CREATE_CHD,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,6,48,138,8
-    CONTROL         "CHD作成後にIMG/CUEを削除",IDC_DELETE_CHD_SOURCE,"Button",
+    CONTROL         "",IDC_DELETE_CHD_SOURCE,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,16,60,128,8
-    CONTROL         "読めない最終セクタを0補完する",IDC_ZERO_FILL_FINAL,"Button",
+    CONTROL         "",IDC_ZERO_FILL_FINAL,"Button",
                     BS_AUTOCHECKBOX | WS_TABSTOP,150,102,147,12
 END
 
@@ -881,6 +881,7 @@ END
 //
 
 IDR_MANIFEST            RT_MANIFEST             "res\\cdm.manifest"
+IDR_KAI_ENGLISH         RCDATA                  "../languages/English.cml"
 
 /////////////////////////////////////////////////////////////////////////////
 //

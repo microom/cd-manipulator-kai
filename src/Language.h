@@ -26,6 +26,30 @@
 #define LP_LOG				(16 + LP_TOC)
 #define LP_MESSAGE			(2  + LP_LOG)
 
+enum class KaiText
+{
+	AutoRead,
+	MixedSkipTail,
+	MixedPreserveTail,
+	MixedReference,
+	MixedNote,
+	AutoCorrectAudio,
+	CreateChd,
+	DeleteChdSource,
+	ZeroFillFinal,
+	Elapsed,
+	AudioPregapFilled,
+	FinalSectorFilled,
+	ChdCreating,
+	ChdSaved,
+	ChdSourceDeleted,
+	ChdSourceDeleteFailed,
+	ChdExists,
+	ChdCancelled,
+	ChdFailed,
+	Count
+};
+
 class CLanguage
 {
 public:
@@ -33,4 +57,9 @@ public:
 	~CLanguage(void);
 	CString m_Str[STRING_COUNT];
 	void ReadLanguage(LPCSTR FileName);
+	const CString& Kai(KaiText text) const;
+private:
+	CString m_KaiText[static_cast<int>(KaiText::Count)];
+	void LoadKaiDefaults();
+	void ReadKaiLine(LPCSTR line);
 };

@@ -22,6 +22,9 @@ struct FakeDrive {
         return true;
     }
     bool stopped() { return cancel; }
+    bool audioPregapReadError() { return false; }
+    bool audioPregapQError() { return false; }
+    void filledAudioPregap(int,int) {}
     bool streamGap(int,int,int,int) { return false; }
     mixed::AudioGap findAudioGap(int,int,int,int) {
         mixed::AudioGap gap{preconfirmed,firstData};
@@ -67,6 +70,77 @@ struct FakeDrive {
         return true;
     }
 };
+
+struct AudioPregapDrive : FakeDrive {
+    static constexpr int first=20, next=first+mixed::audioPregapFrames, end=next+5;
+    int failed=first, anotherFailure=-1, missingOtherQ=-1, filled=-1;
+    bool recognizedPce=true, precedingData=true, readError=true, qError=true, qAtBoundary=false;
+    int lastQ=-1;
+    std::vector<mixed::Sector> bytes;
+
+    bool audioPregapReadError() const { return readError; }
+    bool audioPregapQError() const { return qError && lastQ==first && !qAtBoundary; }
+    void filledAudioPregap(int track,int lba) { CHECK(track==2); filled=lba; }
+    bool read(int lba,int,int,mixed::Sector& s) {
+        if (lba==failed || lba==anotherFailure) return false;
+        s.fill(static_cast<unsigned char>(lba));
+        if (lba<first && (precedingData || lba!=first-1)) {
+            s[0]=s[11]=0;
+            std::fill(s.begin()+1,s.begin()+11,255);
+            s[12]=0; s[13]=mixed::bcd((lba+150)/75); s[14]=mixed::bcd((lba+150)%75); s[15]=1;
+            if (recognizedPce && lba==1) {
+                const std::string marker="PC Engine CD-ROM SYSTEM";
+                std::copy(marker.begin(),marker.end(),s.begin()+48);
+            }
+        }
+        return true;
+    }
+    bool readAudioTail(int lba,int,int,mixed::Sector& s) { return read(lba,0,0,s); }
+    bool q(int lba,int track,int index,bool data) {
+        lastQ=lba;
+        if ((lba==first && !qAtBoundary) || lba==missingOtherQ) return false;
+        if (lba<first) return track==1 && index==1 && data;
+        return track==2 && index==(lba>=next) && !data;
+    }
+    bool write(const mixed::Sector& s) { bytes.push_back(s); return true; }
+    bool trim(int count) { bytes.resize(count); return true; }
+};
+
+void audioPregapRecoveryTests() {
+    const std::vector<mixed::Track> layout={{0,-1},{AudioPregapDrive::next,0}};
+    auto tracks=layout;
+    AudioPregapDrive drive;
+    const int first=AudioPregapDrive::first;
+    const int end=AudioPregapDrive::end;
+    CHECK(mixed::acquire(tracks,end,false,drive,false));
+    CHECK(drive.filled==first && tracks[1].omitted==0 && tracks[1].storedGap==150);
+    CHECK(drive.bytes.size()==end && drive.bytes[first]==mixed::Sector{});
+    for (int lba=first+1; lba<end; ++lba)
+        CHECK(std::all_of(drive.bytes[lba].begin(),drive.bytes[lba].end(),[lba](unsigned char b){return b==lba;}));
+    const auto cue=mixed::cue("test.img",tracks,true);
+    CHECK(cue.find("INDEX 00 00:00:20")!=std::string::npos && cue.find("INDEX 01 00:02:20")!=std::string::npos);
+
+    auto verifyStops=[&](AudioPregapDrive rejected) {
+        auto trial=layout;
+        CHECK(!mixed::acquire(trial,end,false,rejected,false));
+        CHECK(rejected.filled==-1 && rejected.bytes.size()==first && trial[1].storedGap==0);
+    };
+    drive=AudioPregapDrive(); drive.anotherFailure=first+1; verifyStops(drive);
+    drive=AudioPregapDrive(); drive.missingOtherQ=first+1; verifyStops(drive);
+    drive=AudioPregapDrive(); drive.recognizedPce=false; verifyStops(drive);
+    drive=AudioPregapDrive(); drive.precedingData=false; verifyStops(drive);
+    drive=AudioPregapDrive(); drive.readError=false; verifyStops(drive);
+    drive=AudioPregapDrive(); drive.qError=false; verifyStops(drive);
+
+    tracks=layout; drive=AudioPregapDrive(); drive.qAtBoundary=true;
+    CHECK(mixed::acquire(tracks,end,false,drive,false));
+    CHECK(drive.filled==-1 && tracks[1].omitted==150 && tracks[1].storedGap==0);
+    tracks=layout; drive=AudioPregapDrive(); drive.failed=-1; drive.qAtBoundary=true;
+    CHECK(mixed::acquire(tracks,end,false,drive,false));
+    CHECK(drive.filled==-1 && tracks[1].omitted==0 && tracks[1].storedGap==150);
+    CHECK(drive.bytes.size()==end && drive.bytes[first][0]==first);
+}
+
 void catalogGapTests() {
     using mixed::QFrame;
     using mixed::QMatch;
@@ -447,6 +521,7 @@ void replay(const char* cue,const char* image,const char* tails=nullptr,const ch
 int main(int argc,char** argv) {
     try {
         tests();
+        audioPregapRecoveryTests();
         if (argc==3) replay(argv[1],argv[2]);
         else if (argc==5) replay(argv[1],argv[2],argv[3],argv[4]);
         else CHECK(argc==1);
