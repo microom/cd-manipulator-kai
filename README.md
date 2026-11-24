@@ -55,7 +55,14 @@ ctest --test-dir build -C Release --output-on-failure
 python tools/package-release.py --kai-dir dist --mame-bin mame0287b_x64.exe --out build/release
 ```
 
-実行用ZIPをGitHub Releaseに添付し、公開済みの対応ソースへの直リンクをリリース説明にも載せます。対応ソースのアーカイブを作るときは、[MAMEの公式ソースパッケージ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287s.exe) を入手し、`--mame-source mame0287s.exe` を指定します。
+## リリースの手順
+
+1. `src/CDMVersion.h` のバージョン表記と [更新履歴](CHANGELOG.md) を揃えます。
+2. 配布用ZIPを作り、ビルドとテストの結果、ZIPに入っているEXEのバージョン、言語ファイル、ライセンス文書を確認します。
+3. リリースの差分をPRで `main` に統合します。検証済みのコミットが `main` に含まれることを確認してから、そのコミットにリリースタグを付けます。
+4. 更新履歴と対応するリリース説明を用意し、確認した実行用ZIPを添付してGitHub Releaseを公開します。chdmanが前回と同じ場合、対応ソースは公開済みのファイルへの直リンクをリリース説明とZIP内のREADMEに載せます。
+
+対応ソースのアーカイブを作るときは、[MAMEの公式ソースパッケージ](https://github.com/mamedev/mame/releases/download/mame0287/mame0287s.exe) を入手し、`--mame-source mame0287s.exe` を指定します。
 
 ## 出典とライセンス
 
